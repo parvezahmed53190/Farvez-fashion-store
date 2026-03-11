@@ -22,9 +22,12 @@ import { Toaster } from './components/Toaster';
 import { AIAssistant } from './components/AIAssistant';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { CartProvider } from './hooks/useCart';
+import { useLocation } from 'react-router-dom';
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   if (loading) return (
     <div className="h-screen w-screen flex items-center justify-center bg-luxury-black">
@@ -34,7 +37,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      {!isAdminRoute && <Navbar />}
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -60,8 +63,8 @@ function AppContent() {
           />
         </Routes>
       </main>
-      <Footer />
-      <AIAssistant />
+      {!isAdminRoute && <Footer />}
+      {!isAdminRoute && <AIAssistant />}
       <Toaster />
     </div>
   );

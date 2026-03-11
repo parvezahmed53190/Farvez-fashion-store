@@ -12,7 +12,24 @@ db.exec(`
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     role TEXT DEFAULT 'user',
+    profile_photo TEXT,
+    phone TEXT,
+    address TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS user_addresses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    customer_name TEXT NOT NULL,
+    address TEXT NOT NULL,
+    city TEXT NOT NULL,
+    zip TEXT NOT NULL,
+    country TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    is_default BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
   CREATE TABLE IF NOT EXISTS categories (
@@ -209,7 +226,7 @@ if (productCount.count === 0) {
 // Seed some orders for stats if empty
 const orderCount = db.prepare('SELECT COUNT(*) as count FROM orders').get() as { count: number };
 if (orderCount.count === 0) {
-  const adminUser: any = db.prepare('SELECT id FROM users WHERE role = "admin"').get();
+  const adminUser: any = db.prepare("SELECT id FROM users WHERE role = 'admin'").get();
   if (adminUser) {
     const insertOrder = db.prepare(`
       INSERT INTO orders (user_id, customer_name, customer_email, phone, total_amount, status, payment_method, payment_status, shipping_address, created_at)

@@ -8,10 +8,22 @@ export function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +33,7 @@ export function Register() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, photo }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -56,6 +68,23 @@ export function Register() {
         )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
+          <div className="flex flex-col items-center space-y-4 mb-6">
+            <div className="relative group">
+              <div className="w-24 h-24 rounded-full border-2 border-gold/30 overflow-hidden bg-luxury-black flex items-center justify-center group-hover:border-gold transition-colors">
+                {photo ? (
+                  <img src={photo} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <UserIcon size={40} className="text-gray-600" />
+                )}
+              </div>
+              <label className="absolute bottom-0 right-0 bg-gold text-luxury-black p-1.5 rounded-full cursor-pointer hover:scale-110 transition-transform shadow-lg">
+                <ArrowRight size={14} className="-rotate-90" />
+                <input type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} />
+              </label>
+            </div>
+            <span className="text-[10px] text-gold uppercase tracking-widest font-bold">Upload Profile Photo</span>
+          </div>
+
           <div className="space-y-2">
             <label className="text-xs font-bold text-gold uppercase tracking-widest">Full Name</label>
             <div className="relative">

@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import db from './src/db.js'; // Note: using .js because of ESM in node
+import db from './src/db.ts'; // Note: using .ts for tsx resolution
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -64,7 +64,7 @@ async function startServer() {
   });
 
   app.get('/api/auth/me', authenticate, (req: any, res) => {
-    const user: any = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.user.id);
+    const user: any = db.prepare('SELECT id, name, email, role, profile_photo, phone, address FROM users WHERE id = ?').get(req.user.id);
     res.json(user);
   });
 
@@ -217,8 +217,23 @@ async function startServer() {
   });
 
   app.get('/api/admin/orders', authenticate, isAdmin, (req, res) => {
-    const orders = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
-    res.json(orders);
+    const orders = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all() as any[];
+    const ordersWithItems = orders.map(order => {
+      const items = db.prepare(`
+        SELECT oi.*, p.name, p.images 
+        FROM order_items oi 
+        JOIN products p ON oi.product_id = p.id 
+        WHERE oi.order_id = ?
+      `).all(order.id);
+      return { 
+        ...order, 
+        items: items.map((item: any) => ({ 
+          ...item, 
+          image: JSON.parse(item.images || '[]')[0] 
+        })) 
+      };
+    });
+    res.json(ordersWithItems);
   });
 
   app.patch('/api/admin/orders/:id/status', authenticate, isAdmin, (req, res) => {
@@ -239,6 +254,58 @@ async function startServer() {
 
     params.push(req.params.id);
     db.prepare(`UPDATE orders SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+    res.json({ success: true });
+  });
+
+  // --- Admin Profile & Address Routes ---
+  app.patch('/api/admin/profile', authenticate, isAdmin, (req: any, res) => {
+    const { name, email, phone, address, profile_photo } = req.body;
+    try {
+      db.prepare(`
+        UPDATE users 
+        SET name = ?, email = ?, phone = ?, address = ?, profile_photo = ? 
+        WHERE id = ?
+      `).run(name, email, phone, address, profile_photo, req.user.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/admin/addresses', authenticate, isAdmin, (req: any, res) => {
+    const addresses = db.prepare('SELECT * FROM user_addresses WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id);
+    res.json(addresses);
+  });
+
+  app.post('/api/admin/addresses', authenticate, isAdmin, (req: any, res) => {
+    const { customer_name, address, city, zip, country, phone } = req.body;
+    try {
+      const result = db.prepare(`
+        INSERT INTO user_addresses (user_id, customer_name, address, city, zip, country, phone)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(req.user.id, customer_name, address, city, zip, country, phone);
+      res.json({ id: result.lastInsertRowid, success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/admin/addresses/:id', authenticate, isAdmin, (req: any, res) => {
+    const { customer_name, address, city, zip, country, phone } = req.body;
+    try {
+      db.prepare(`
+        UPDATE user_addresses 
+        SET customer_name = ?, address = ?, city = ?, zip = ?, country = ?, phone = ? 
+        WHERE id = ? AND user_id = ?
+      `).run(customer_name, address, city, zip, country, phone, req.params.id, req.user.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/admin/addresses/:id', authenticate, isAdmin, (req: any, res) => {
+    db.prepare('DELETE FROM user_addresses WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
     res.json({ success: true });
   });
 

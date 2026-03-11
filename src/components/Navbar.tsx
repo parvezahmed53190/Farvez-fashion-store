@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout } = useAuth();
-  const { items } = useCart();
+  const { itemCount, items } = useCart();
 
   return (
     <nav className="sticky top-0 z-50 glass-panel border-b border-white/5">
@@ -32,9 +32,9 @@ export function Navbar() {
             <button className="hover:text-gold transition-colors"><Search size={20} /></button>
             <Link to="/cart" className="relative hover:text-gold transition-colors">
               <ShoppingCart size={20} />
-              {items.length > 0 && (
+              {itemCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-gold text-luxury-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {items.length}
+                  {itemCount}
                 </span>
               )}
             </Link>

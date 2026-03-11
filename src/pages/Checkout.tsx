@@ -48,10 +48,9 @@ export function Checkout() {
           customerEmail: formData.email,
           phone: formData.phone,
           items: items.map(item => ({
-            product_id: item.product_id,
+            product_id: item.id,
             quantity: item.quantity,
-            price: item.discount_price || item.price,
-            variant: item.variant
+            price: item.discount_price || item.price
           })),
           totalAmount: total,
           shippingAddress: `${formData.address}, ${formData.city}, ${formData.zip}`,
@@ -187,7 +186,7 @@ export function Checkout() {
               {items.map(item => (
                 <div key={item.id} className="flex space-x-4">
                   <div className="w-16 h-20 shrink-0">
-                    <img src={item.images[0]} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                    <img src={item.image} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                   </div>
                   <div className="flex-grow text-sm">
                     <div className="font-bold truncate">{item.name}</div>

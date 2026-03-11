@@ -4,9 +4,7 @@ import { Trash2, ShoppingBag, ArrowRight, Minus, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export function Cart() {
-  const { items, removeFromCart, total, loading } = useCart();
-
-  if (loading) return <div className="h-[60vh] flex items-center justify-center"><div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div></div>;
+  const { items, removeFromCart, updateQuantity, total } = useCart();
 
   if (items.length === 0) {
     return (
@@ -39,14 +37,14 @@ export function Cart() {
               className="luxury-card p-6 flex items-center space-x-6"
             >
               <div className="w-24 h-32 overflow-hidden shrink-0">
-                <img src={item.images[0]} className="w-full h-full object-cover" alt={item.name} referrerPolicy="no-referrer" />
+                <img src={item.image} className="w-full h-full object-cover" alt={item.name} referrerPolicy="no-referrer" />
               </div>
               <div className="flex-grow">
                 <div className="flex justify-between items-start">
                   <div>
                     <Link to={`/product/${item.slug}`} className="font-serif text-lg hover:text-gold transition-colors">{item.name}</Link>
                     <div className="text-xs text-gray-500 mt-1">
-                      {item.variant && Object.entries(JSON.parse(item.variant)).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                      Unit Price: ${item.discount_price || item.price}
                     </div>
                   </div>
                   <button onClick={() => removeFromCart(item.id)} className="text-gray-500 hover:text-red-500 transition-colors">
@@ -55,12 +53,22 @@ export function Cart() {
                 </div>
                 <div className="flex justify-between items-center mt-6">
                   <div className="flex items-center border border-white/10 text-sm">
-                    <button className="px-3 py-1 hover:text-gold"><Minus size={14} /></button>
+                    <button 
+                      onClick={() => updateQuantity(item.id, -1)}
+                      className="px-3 py-1 hover:text-gold"
+                    >
+                      <Minus size={14} />
+                    </button>
                     <span className="px-3 py-1 border-x border-white/10">{item.quantity}</span>
-                    <button className="px-3 py-1 hover:text-gold"><Plus size={14} /></button>
+                    <button 
+                      onClick={() => updateQuantity(item.id, 1)}
+                      className="px-3 py-1 hover:text-gold"
+                    >
+                      <Plus size={14} />
+                    </button>
                   </div>
                   <div className="font-bold text-gold">
-                    ${(item.discount_price || item.price) * item.quantity}
+                    ${((item.discount_price || item.price) * item.quantity).toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -75,7 +83,7 @@ export function Cart() {
             <div className="space-y-4 text-sm">
               <div className="flex justify-between text-gray-400">
                 <span>Subtotal</span>
-                <span>${total}</span>
+                <span>${total.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-400">
                 <span>Shipping</span>
@@ -87,7 +95,7 @@ export function Cart() {
               </div>
               <div className="border-t border-white/5 pt-4 flex justify-between text-lg font-bold">
                 <span>Total</span>
-                <span className="text-gold">${total}</span>
+                <span className="text-gold">${total.toFixed(2)}</span>
               </div>
             </div>
             <Link to="/checkout" className="w-full gold-gradient text-luxury-black font-bold py-4 rounded-sm flex items-center justify-center group">

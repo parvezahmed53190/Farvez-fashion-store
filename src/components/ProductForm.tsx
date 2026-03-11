@@ -4,27 +4,28 @@ import { X, Upload, Plus, Trash2 } from 'lucide-react';
 interface ProductFormProps {
   onClose: () => void;
   onSuccess: () => void;
+  product?: any;
 }
 
-export function ProductForm({ onClose, onSuccess }: ProductFormProps) {
+export function ProductForm({ onClose, onSuccess, product }: ProductFormProps) {
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
-    name: '',
-    slug: '',
-    description: '',
-    price: '',
-    discount_price: '',
-    stock: '',
-    sku: '',
-    category_id: '',
-    images: [''],
-    variants: [{ size: '' }],
-    is_featured: false,
-    is_trending: false,
+    name: product?.name || '',
+    slug: product?.slug || '',
+    description: product?.description || '',
+    price: product?.price?.toString() || '',
+    discount_price: product?.discount_price?.toString() || '',
+    stock: product?.stock?.toString() || '',
+    sku: product?.sku || '',
+    category_id: product?.category_id?.toString() || '',
+    images: product?.images || [''],
+    variants: product?.variants || [],
+    is_featured: product?.is_featured || false,
+    is_trending: product?.is_trending || false,
   });
 
   useEffect(() => {
@@ -40,8 +41,11 @@ export function ProductForm({ onClose, onSuccess }: ProductFormProps) {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/products', {
-        method: 'POST',
+      const url = product ? `/api/admin/products/${product.id}` : '/api/admin/products';
+      const method = product ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -62,7 +66,7 @@ export function ProductForm({ onClose, onSuccess }: ProductFormProps) {
         onClose();
       } else {
         const data = await res.json();
-        setError(data.error || 'Failed to add product');
+        setError(data.error || `Failed to ${product ? 'update' : 'add'} product`);
       }
     } catch (err) {
       setError('Something went wrong');
@@ -119,7 +123,7 @@ export function ProductForm({ onClose, onSuccess }: ProductFormProps) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="bg-luxury-gray border border-white/10 w-full max-w-4xl rounded-sm shadow-2xl my-8">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-gold/5">
-          <h2 className="text-2xl font-serif font-bold gold-text-gradient">Add New Product</h2>
+          <h2 className="text-2xl font-serif font-bold gold-text-gradient">{product ? 'Edit Product' : 'Add New Product'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <X size={24} />
           </button>
@@ -298,13 +302,14 @@ export function ProductForm({ onClose, onSuccess }: ProductFormProps) {
                           setFormData({ ...formData, variants: newVariants });
                         }}
                       />
-                      {formData.variants.length > 1 && (
-                        <button type="button" onClick={() => removeVariantField(index)} className="text-red-500">
-                          <X size={14} />
-                        </button>
-                      )}
+                      <button type="button" onClick={() => removeVariantField(index)} className="text-red-500">
+                        <X size={14} />
+                      </button>
                     </div>
                   ))}
+                  {formData.variants.length === 0 && (
+                    <div className="text-[10px] text-gray-500 italic">No sizes added. Click + to add.</div>
+                  )}
                 </div>
               </div>
 
@@ -355,7 +360,7 @@ export function ProductForm({ onClose, onSuccess }: ProductFormProps) {
               disabled={loading}
               className="gold-gradient text-luxury-black px-12 py-3 font-bold rounded-sm hover:scale-105 transition-transform disabled:opacity-50"
             >
-              {loading ? 'Adding Product...' : 'Add Product'}
+              {loading ? (product ? 'Updating...' : 'Adding...') : (product ? 'Update Product' : 'Add Product')}
             </button>
           </div>
         </form>

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Filter, ChevronDown, Grid, List as ListIcon } from 'lucide-react';
+import { Filter, ChevronDown, Grid, List as ListIcon, ShoppingCart } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useCart } from '../hooks/useCart';
 
 export function Shop() {
   const [searchParams] = useSearchParams();
@@ -108,24 +109,40 @@ export function Shop() {
 }
 
 function ProductCard({ product }: { product: any }) {
+  const { addToCart } = useCart();
+
   return (
     <motion.div 
       whileHover={{ y: -10 }}
       className="luxury-card group"
     >
-      <Link to={`/product/${product.slug}`} className="block relative aspect-[3/4] overflow-hidden">
-        <img 
-          src={product.images[0] || 'https://picsum.photos/seed/product/400/600'} 
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-          alt={product.name}
-          referrerPolicy="no-referrer"
-        />
+      <div className="block relative aspect-[3/4] overflow-hidden">
+        <Link to={`/product/${product.slug}`}>
+          <img 
+            src={product.images[0] || 'https://picsum.photos/seed/product/400/600'} 
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+            alt={product.name}
+            referrerPolicy="no-referrer"
+          />
+        </Link>
         {product.discount_price && (
           <div className="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-bold px-2 py-1">
             SALE
           </div>
         )}
-      </Link>
+        <div className="absolute inset-0 bg-luxury-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center space-y-4">
+          <Link to={`/product/${product.slug}`} className="border border-white text-white px-6 py-2 text-sm font-bold hover:bg-white hover:text-luxury-black transition-all">
+            Quick View
+          </Link>
+          <button 
+            onClick={() => addToCart(product)}
+            className="bg-gold text-luxury-black px-6 py-2 text-sm font-bold hover:scale-105 transition-all flex items-center space-x-2"
+          >
+            <ShoppingCart size={16} />
+            <span>Add to Cart</span>
+          </button>
+        </div>
+      </div>
       <div className="p-6 space-y-2">
         <div className="text-[10px] text-gold uppercase tracking-widest font-bold">{product.category_name}</div>
         <Link to={`/product/${product.slug}`} className="block font-serif text-lg hover:text-gold transition-colors truncate">

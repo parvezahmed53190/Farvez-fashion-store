@@ -3,101 +3,82 @@ import { useAuth } from './useAuth';
 
 export interface CartItem {
   id: number;
-  product_id: number;
   name: string;
   price: number;
   discount_price?: number;
   quantity: number;
-  variant: any;
-  images: string[];
+  image: string;
   slug: string;
 }
 
 interface CartContextType {
   items: CartItem[];
-  loading: boolean;
-  addToCart: (productId: number, quantity: number, variant: any) => Promise<void>;
-  removeFromCart: (id: number) => Promise<void>;
+  addToCart: (product: any, quantity?: number) => void;
+  removeFromCart: (productId: number) => void;
+  updateQuantity: (productId: number, delta: number) => void;
+  clearCart: () => void;
   total: number;
-  refreshCart: () => Promise<void>;
+  itemCount: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
-
-  const refreshCart = async () => {
-    if (!user) {
-      setItems([]);
-      return;
-    }
-    const token = localStorage.getItem('token');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/cart', {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch cart', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [items, setItems] = useState<CartItem[]>(() => {
+    const savedCart = localStorage.getItem('farvez_cart');
+    return savedCart ? JSON.parse(savedCart) : [];
+  });
 
   useEffect(() => {
-    refreshCart();
-  }, [user]);
+    localStorage.setItem('farvez_cart', JSON.stringify(items));
+  }, [items]);
 
-  const addToCart = async (product_id: number, quantity: number, variant: any) => {
-    if (!user) {
-      alert('Please login to add items to cart');
-      return;
-    }
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch('/api/cart', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ product_id, quantity, variant }),
-      });
-      if (res.ok) {
-        await refreshCart();
-        alert('Product added to cart successfully!');
+  const addToCart = (product: any, quantity: number = 1) => {
+    setItems(prevItems => {
+      const existingItem = prevItems.find(item => item.id === product.id);
+      if (existingItem) {
+        return prevItems.map(item =>
+          item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
+        );
       }
-    } catch (err) {
-      console.error('Add to cart failed', err);
-    }
+      return [...prevItems, {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        discount_price: product.discount_price,
+        quantity: quantity,
+        image: product.image || (product.images && product.images[0]),
+        slug: product.slug
+      }];
+    });
+    
+    // Trigger notification
+    window.dispatchEvent(new CustomEvent('cart-notification', { 
+      detail: { message: `${product.name} added to cart successfully` } 
+    }));
   };
 
-  const removeFromCart = async (id: number) => {
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch(`/api/cart/${id}`, { 
-        method: 'DELETE',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      if (res.ok) {
-        await refreshCart();
-      }
-    } catch (err) {
-      console.error('Remove from cart failed', err);
-    }
+  const removeFromCart = (productId: number) => {
+    setItems(prevItems => prevItems.filter(item => item.id !== productId));
   };
+
+  const updateQuantity = (productId: number, delta: number) => {
+    setItems(prevItems => prevItems.map(item => {
+      if (item.id === productId) {
+        const newQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const clearCart = () => setItems([]);
 
   const total = items.reduce((acc, item) => acc + (item.discount_price || item.price) * item.quantity, 0);
+  const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, loading, addToCart, removeFromCart, total, refreshCart }}>
+    <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQuantity, clearCart, total, itemCount }}>
       {children}
     </CartContext.Provider>
   );

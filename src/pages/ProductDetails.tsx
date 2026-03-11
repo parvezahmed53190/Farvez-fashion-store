@@ -110,7 +110,7 @@ export function ProductDetails() {
                 <button onClick={() => setQuantity(quantity + 1)} className="px-4 py-3 hover:text-gold">+</button>
               </div>
               <button 
-                onClick={() => addToCart(product.id, quantity, { size: selectedSize })}
+                onClick={() => addToCart(product, quantity)}
                 className="flex-grow gold-gradient text-luxury-black font-bold py-4 flex items-center justify-center group"
               >
                 <ShoppingBag className="mr-2 group-hover:scale-110 transition-transform" size={20} /> Add to Cart
