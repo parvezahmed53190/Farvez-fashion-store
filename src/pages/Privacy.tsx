@@ -205,7 +205,7 @@ export function Privacy() {
                 </div>
                 <div className="flex items-center space-x-3 text-white">
                   <Phone size={18} className="text-gold" />
-                  <span>01934896944</span>
+                  <span>+880 193996944</span>
                 </div>
               </div>
               <div className="border-l border-white/5 pl-8 space-y-4">
@@ -216,7 +216,7 @@ export function Privacy() {
                 </div>
                 <div className="flex items-center space-x-3 text-white">
                   <Phone size={18} className="text-gold" />
-                  <span>01934896944</span>
+                  <span>+880 193996944</span>
                 </div>
               </div>
             </div>

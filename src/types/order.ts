@@ -13,6 +13,7 @@ export interface OrderItem {
   price: number;
   quantity: number;
   image: string;
+  variant?: string;
 }
 
 export interface Order {
@@ -21,6 +22,10 @@ export interface Order {
   customer_name: string;
   customer_email: string;
   items?: OrderItem[];
+  product_name?: string;
+  size?: string;
+  color?: string;
+  address?: string;
   total_amount: number;
   status: OrderStatus;
   created_at: string;

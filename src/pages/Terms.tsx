@@ -116,7 +116,7 @@ export function Terms() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div className="p-4 bg-white/5 rounded-sm">
                   <span className="text-gold font-bold block mb-1">Phone</span>
-                  <span>+880 1934-896944</span>
+                  <span>+880 193996944</span>
                 </div>
                 <div className="p-4 bg-white/5 rounded-sm">
                   <span className="text-gold font-bold block mb-1">Email</span>

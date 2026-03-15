@@ -32,7 +32,7 @@ export function Returns() {
               <span>যোগাযোগের মাধ্যম:</span>
             </h4>
             <ul className="space-y-2 text-gray-400">
-              <li>ফোন: 01934896944</li>
+              <li>ফোন: +880 193996944</li>
               <li>ইমেইল: parvezahmed53190@gmail.com</li>
             </ul>
           </div>
@@ -95,7 +95,7 @@ export function Returns() {
               <span>Contact Method:</span>
             </h4>
             <ul className="space-y-2 text-gray-400">
-              <li>Phone: 01934896944</li>
+              <li>Phone: +880 193996944</li>
               <li>Email: parvezahmed53190@gmail.com</li>
             </ul>
           </div>

@@ -17,8 +17,12 @@ export function AdminDashboard() {
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [productSearch, setProductSearch] = useState('');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [orderSearch, setOrderSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editingAddress, setEditingAddress] = useState<any>(null);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [newAddress, setNewAddress] = useState({
     customerName: '',
     address: '',
@@ -175,6 +179,30 @@ export function AdminDashboard() {
     }
   };
 
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
+
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/products/${productToDelete.id}`, {
+      method: 'DELETE',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+
+    if (res.ok) {
+      setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
+      setShowDeleteConfirm(false);
+      setProductToDelete(null);
+      window.dispatchEvent(new CustomEvent('app-notification', { 
+        detail: { message: 'Product deleted successfully' } 
+      }));
+      fetchStats(); // Update stats as well
+    } else {
+      window.dispatchEvent(new CustomEvent('app-notification', { 
+        detail: { message: 'Failed to delete product' } 
+      }));
+    }
+  };
+
   const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
@@ -263,6 +291,22 @@ export function AdminDashboard() {
       default: return 'bg-gray-500/10 text-gray-500';
     }
   };
+
+  const filteredOrders = orders.filter(order => {
+    const searchLower = orderSearch.toLowerCase();
+    const matchesId = order.id.toString().toLowerCase().includes(searchLower);
+    const matchesCustomer = order.customer_name.toLowerCase().includes(searchLower) || 
+                           order.customer_email.toLowerCase().includes(searchLower);
+    const matchesProduct = order.items?.some(item => 
+      item.name.toLowerCase().includes(searchLower)
+    ) || order.product_name?.toLowerCase().includes(searchLower) ||
+    order.size?.toLowerCase().includes(searchLower) ||
+    order.color?.toLowerCase().includes(searchLower);
+    
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    
+    return (matchesId || matchesCustomer || matchesProduct) && matchesStatus;
+  });
 
   return (
     <div className="min-h-screen bg-luxury-black flex">
@@ -451,7 +495,15 @@ export function AdminDashboard() {
                         >
                           <Edit size={18} />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                        <button 
+                          onClick={() => {
+                            setProductToDelete(product);
+                            setShowDeleteConfirm(true);
+                          }}
+                          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -469,105 +521,273 @@ export function AdminDashboard() {
         )}
 
         {activeTab === 'orders' && (
-          <div className="luxury-card overflow-hidden">
-            <table className="w-full text-left">
-              <thead className="bg-white/5 text-gold text-xs uppercase tracking-widest font-bold">
-                <tr>
-                  <th className="px-6 py-4">Order ID</th>
-                  <th className="px-6 py-4">Customer</th>
-                  <th className="px-6 py-4">Total</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {orders.map((order) => (
-                  <React.Fragment key={order.id}>
-                    <tr className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-sm">#{order.id}</div>
-                        <div className="text-[10px] text-gray-500">{new Date(order.created_at).toLocaleString()}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-bold">{order.customer_name}</div>
-                        <div className="text-xs text-gray-500">{order.customer_email}</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-bold text-gold">${order.total_amount}</td>
-                      <td className="px-6 py-4">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const nextStatus = {
-                              [OrderStatus.PENDING]: OrderStatus.CONFIRMED,
-                              [OrderStatus.CONFIRMED]: OrderStatus.PROCESSING,
-                              [OrderStatus.PROCESSING]: OrderStatus.SHIPPED,
-                              [OrderStatus.SHIPPED]: OrderStatus.DELIVERED,
-                              [OrderStatus.DELIVERED]: OrderStatus.PENDING,
-                              [OrderStatus.CANCELED]: OrderStatus.PENDING,
-                            }[order.status] || OrderStatus.PENDING;
-                            handleStatusUpdate(order.id, nextStatus);
-                          }}
-                          className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center space-x-2 w-fit transition-transform hover:scale-105 active:scale-95 ${getStatusColor(order.status)}`}
-                          title="Click to advance status"
-                        >
-                          {getStatusIcon(order.status)}
-                          <span>{order.status}</span>
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        <select 
-                          className="bg-luxury-black border border-white/10 text-xs px-2 py-1 outline-none focus:border-gold"
-                          value={order.status}
-                          onChange={(e) => handleStatusUpdate(order.id, e.target.value as OrderStatus)}
-                        >
-                          {Object.values(OrderStatus).map(status => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                    <AnimatePresence>
-                      {expandedOrder === order.id && (
-                        <motion.tr
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="bg-white/[0.02]"
-                        >
-                          <td colSpan={5} className="px-6 py-4">
-                            <div className="space-y-4">
-                              <h4 className="text-xs font-bold text-gold uppercase tracking-widest">Order Items</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {order.items?.map((item, idx) => (
-                                  <div key={idx} className="flex items-center space-x-4 bg-luxury-black/50 p-3 border border-white/5 rounded-sm">
-                                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-sm" referrerPolicy="no-referrer" />
-                                    <div>
-                                      <div className="text-sm font-bold">{item.name}</div>
-                                      <div className="text-xs text-gray-400">Qty: {item.quantity} × ${item.price}</div>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-3 space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <h2 className="text-xl font-serif font-bold">Order Management</h2>
+                  <div className="flex flex-col md:flex-row items-end md:items-center gap-4 w-full md:w-auto">
+                    <div className="relative w-full md:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                      <input 
+                        type="text"
+                        placeholder="Search orders, customers, products..."
+                        className="w-full bg-luxury-black border border-white/10 rounded-sm py-2 pl-10 pr-4 text-xs focus:border-gold outline-none transition-colors"
+                        value={orderSearch}
+                        onChange={(e) => setOrderSearch(e.target.value)}
+                      />
+                    </div>
+                    <select 
+                      className="bg-luxury-black border border-white/10 rounded-sm py-2 px-4 text-xs focus:border-gold outline-none transition-colors w-full md:w-auto"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                      <option value="all">All Statuses</option>
+                      {Object.values(OrderStatus).map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                    <div className="flex items-center space-x-2 text-[10px] text-gray-500 uppercase tracking-widest">
+                      <span className="w-2 h-2 rounded-full bg-gold animate-pulse"></span>
+                      <span>Live Updates Active</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="luxury-card overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead className="bg-white/5 text-gold text-xs uppercase tracking-widest font-bold">
+                      <tr>
+                        <th className="px-6 py-4">Order Info</th>
+                        <th className="px-6 py-4">Customer</th>
+                        <th className="px-6 py-4">Total</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {filteredOrders.map((order) => (
+                        <React.Fragment key={order.id}>
+                          <tr className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}>
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-sm">#{order.id}</div>
+                              <div className="text-[10px] text-gray-500">{new Date(order.created_at).toLocaleString()}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-bold">{order.customer_name}</div>
+                              <div className="text-xs text-gray-500">{order.customer_email}</div>
+                            </td>
+                            <td className="px-6 py-4 text-sm font-bold text-gold">${order.total_amount}</td>
+                            <td className="px-6 py-4">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const currentStatus = order.status;
+                                  const nextStatusMap: Record<string, OrderStatus> = {
+                                    [OrderStatus.PENDING]: OrderStatus.CONFIRMED,
+                                    [OrderStatus.CONFIRMED]: OrderStatus.PROCESSING,
+                                    [OrderStatus.PROCESSING]: OrderStatus.SHIPPED,
+                                    [OrderStatus.SHIPPED]: OrderStatus.DELIVERED,
+                                    [OrderStatus.DELIVERED]: OrderStatus.PENDING,
+                                    [OrderStatus.CANCELED]: OrderStatus.PENDING,
+                                  };
+                                  // Handle case-insensitivity just in case
+                                  const normalizedStatus = Object.values(OrderStatus).find(s => s.toLowerCase() === currentStatus.toLowerCase()) || OrderStatus.PENDING;
+                                  const nextStatus = nextStatusMap[normalizedStatus] || OrderStatus.PENDING;
+                                  handleStatusUpdate(order.id, nextStatus);
+                                }}
+                                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center space-x-2 w-fit transition-transform hover:scale-105 active:scale-95 ${getStatusColor(order.status)}`}
+                                title="Click to advance status"
+                              >
+                                {getStatusIcon(order.status)}
+                                <span>{order.status}</span>
+                              </button>
+                            </td>
+                            <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <select 
+                                className="bg-luxury-black border border-white/10 text-xs px-2 py-1 outline-none focus:border-gold"
+                                value={order.status}
+                                onChange={(e) => handleStatusUpdate(order.id, e.target.value as OrderStatus)}
+                              >
+                                {Object.values(OrderStatus).map(status => (
+                                  <option key={status} value={status}>{status}</option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                          <AnimatePresence>
+                            {expandedOrder === order.id && (
+                              <motion.tr
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="bg-white/[0.02]"
+                              >
+                                <td colSpan={5} className="px-6 py-8">
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    <div className="md:col-span-2 space-y-6">
+                                      <div>
+                                        <h4 className="text-[10px] font-bold text-gold uppercase tracking-widest mb-4 flex items-center">
+                                          <Package size={14} className="mr-2" /> Items Ordered
+                                        </h4>
+                                        <div className="space-y-3">
+                                          {order.product_name && (
+                                            <div className="flex items-center justify-between bg-luxury-black/40 p-4 border border-white/5 rounded-sm">
+                                              <div className="flex items-center space-x-4">
+                                                <div className="w-16 h-16 bg-white/5 flex items-center justify-center rounded-sm border border-white/10">
+                                                  <Package size={24} className="text-gold" />
+                                                </div>
+                                                <div>
+                                                  <div className="text-sm font-bold text-white">{order.product_name}</div>
+                                                  <div className="text-[10px] text-gray-500 mt-1">
+                                                    Size: {order.size || 'N/A'} | Color: {order.color || 'N/A'}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <div className="text-right">
+                                                <div className="text-sm font-bold text-gold">${order.total_amount}</div>
+                                                <div className="text-[10px] text-gray-500">Single Item Order</div>
+                                              </div>
+                                            </div>
+                                          )}
+                                          {order.items?.map((item, idx) => (
+                                            <div key={idx} className="flex items-center justify-between bg-luxury-black/40 p-4 border border-white/5 rounded-sm">
+                                              <div className="flex items-center space-x-4">
+                                                <div className="relative group">
+                                                  <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-sm border border-white/10" referrerPolicy="no-referrer" />
+                                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Search size={14} className="text-white" />
+                                                  </div>
+                                                </div>
+                                                <div>
+                                                  <div className="text-sm font-bold text-white">{item.name}</div>
+                                                  <div className="text-[10px] text-gray-500 mt-1">
+                                                    {item.variant ? JSON.parse(item.variant).map((v: any) => `${Object.keys(v)[0]}: ${Object.values(v)[0]}`).join(' | ') : 'Standard Edition'}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <div className="text-right">
+                                                <div className="text-sm font-bold text-gold">${item.price}</div>
+                                                <div className="text-[10px] text-gray-500">Qty: {item.quantity}</div>
+                                              </div>
+                                            </div>
+                                          ))}
+                                          {(!order.items || order.items.length === 0) && (
+                                            <div className="text-xs text-gray-500 italic p-4 bg-luxury-black/20 border border-dashed border-white/10 rounded-sm">No item details available.</div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                      <div className="bg-luxury-black/40 p-6 border border-white/5 rounded-sm">
+                                        <h4 className="text-[10px] font-bold text-gold uppercase tracking-widest mb-4 flex items-center">
+                                          <MapPin size={14} className="mr-2" /> Shipping Details
+                                        </h4>
+                                        <div className="space-y-3">
+                                          <div>
+                                            <div className="text-[9px] text-gray-500 uppercase">Customer</div>
+                                            <div className="text-xs font-bold">{order.customer_name}</div>
+                                          </div>
+                                          <div>
+                                            <div className="text-[9px] text-gray-500 uppercase">Contact</div>
+                                            <div className="text-xs">{order.phone}</div>
+                                            <div className="text-xs text-gray-500">{order.customer_email}</div>
+                                          </div>
+                                          <div>
+                                            <div className="text-[9px] text-gray-500 uppercase">Address</div>
+                                            <div className="text-xs leading-relaxed text-gray-300">{order.address || order.shipping_address}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="bg-luxury-black/40 p-6 border border-white/5 rounded-sm">
+                                        <h4 className="text-[10px] font-bold text-gold uppercase tracking-widest mb-4 flex items-center">
+                                          <DollarSign size={14} className="mr-2" /> Payment Info
+                                        </h4>
+                                        <div className="space-y-3">
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-[10px] text-gray-500 uppercase">Method</span>
+                                            <span className="text-xs font-bold uppercase">{order.payment_method || 'COD'}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-[10px] text-gray-500 uppercase">Status</span>
+                                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${order.payment_status === 'paid' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}`}>
+                                              {order.payment_status || 'Unpaid'}
+                                            </span>
+                                          </div>
+                                          <div className="pt-3 border-t border-white/5 flex justify-between items-center">
+                                            <span className="text-xs font-bold text-white">Total Amount</span>
+                                            <span className="text-lg font-bold text-gold">${order.total_amount}</span>
+                                          </div>
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
-                                ))}
-                                {(!order.items || order.items.length === 0) && (
-                                  <div className="text-xs text-gray-500 italic">No item details available.</div>
-                                )}
-                              </div>
-                              <div className="pt-4 border-t border-white/5">
-                                <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Shipping Address</div>
-                                <div className="text-sm text-gray-300">{order.shipping_address}</div>
-                                <div className="text-sm text-gray-300">Phone: {order.phone}</div>
-                              </div>
-                            </div>
-                          </td>
-                        </motion.tr>
-                      )}
-                    </AnimatePresence>
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-            {orders.length === 0 && (
-              <div className="p-12 text-center text-gray-500">No orders found.</div>
-            )}
+                                </td>
+                              </motion.tr>
+                            )}
+                          </AnimatePresence>
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredOrders.length === 0 && (
+                    <div className="p-12 text-center text-gray-500">
+                      {orderSearch ? `No orders found matching "${orderSearch}"` : 'No orders found.'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="luxury-card p-6">
+                  <h3 className="text-[10px] font-bold text-gold uppercase tracking-widest mb-4">Admin Profile</h3>
+                  <div className="flex items-center space-x-4 mb-6">
+                    <img src={adminProfile.photo} alt="Admin" className="w-12 h-12 rounded-full border-2 border-gold object-cover" referrerPolicy="no-referrer" />
+                    <div>
+                      <div className="text-sm font-bold">{adminProfile.name}</div>
+                      <div className="text-[10px] text-gray-500">Store Administrator</div>
+                    </div>
+                  </div>
+                  <div className="space-y-3 pt-4 border-t border-white/5">
+                    <div className="flex items-center text-xs text-gray-400">
+                      <Mail size={12} className="mr-2 text-gold" /> {adminProfile.email}
+                    </div>
+                    <div className="flex items-center text-xs text-gray-400">
+                      <Phone size={12} className="mr-2 text-gold" /> {adminProfile.mobile || 'No phone set'}
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('profile')}
+                    className="w-full mt-6 py-2 border border-white/10 hover:border-gold text-[10px] font-bold uppercase tracking-widest transition-colors"
+                  >
+                    Edit Profile
+                  </button>
+                </div>
+
+                <div className="luxury-card p-6">
+                  <h3 className="text-[10px] font-bold text-gold uppercase tracking-widest mb-4">Quick Addresses</h3>
+                  <div className="space-y-4">
+                    {customerAddresses.slice(0, 3).map((addr) => (
+                      <div key={addr.id} className="text-xs border-b border-white/5 pb-3 last:border-0">
+                        <div className="font-bold mb-1">{addr.customerName}</div>
+                        <div className="text-gray-500 line-clamp-1">{addr.address}</div>
+                      </div>
+                    ))}
+                    {customerAddresses.length === 0 && (
+                      <div className="text-xs text-gray-500 italic">No addresses saved.</div>
+                    )}
+                    <button 
+                      onClick={() => setActiveTab('addresses')}
+                      className="w-full mt-2 text-[10px] font-bold text-gold uppercase tracking-widest hover:underline"
+                    >
+                      View All Addresses
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -852,7 +1072,63 @@ export function AdminDashboard() {
           />
         )}
       </AnimatePresence>
-      <AdminAIAssistant />
+
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDeleteConfirm(false)}
+              className="absolute inset-0 bg-luxury-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md luxury-card p-8 shadow-2xl border border-white/10"
+            >
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500">
+                  <Trash2 size={40} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-serif font-bold">Confirm Deletion</h3>
+                  <p className="text-gray-400">
+                    Are you sure you want to delete <span className="text-white font-bold">"{productToDelete?.name}"</span>? 
+                    This action cannot be undone.
+                  </p>
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 py-3 bg-white/5 hover:bg-white/10 rounded-sm text-xs font-bold uppercase tracking-widest transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleDeleteProduct}
+                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-sm text-xs font-bold uppercase tracking-widest transition-colors shadow-[0_0_20px_rgba(220,38,38,0.2)]"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      <AdminAIAssistant 
+        stats={stats} 
+        products={products} 
+        orders={orders} 
+        onRefresh={() => {
+          fetchStats();
+          fetchProducts();
+          fetchAddresses();
+        }}
+      />
     </div>
   );
 }

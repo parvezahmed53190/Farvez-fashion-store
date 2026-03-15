@@ -95,7 +95,7 @@ export function About() {
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Mobile</p>
-              <p className="font-bold">01934896944</p>
+              <p className="font-bold">+880 193996944</p>
             </div>
           </div>
           <div className="flex flex-col items-center space-y-3 text-center">
@@ -114,6 +114,15 @@ export function About() {
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Facebook</p>
               <a href="https://www.facebook.com/share/1MuvYSfBrP/" target="_blank" rel="noopener noreferrer" className="font-bold hover:text-gold transition-colors">Visit Profile</a>
+            </div>
+          </div>
+          <div className="flex flex-col items-center space-y-3 text-center md:col-span-2 lg:col-span-4 mt-4">
+            <div className="w-12 h-12 bg-gold/10 rounded-full flex items-center justify-center text-gold">
+              <MapPin size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Address</p>
+              <p className="font-bold">Humaun Rashid cattar, Dakshin surma, Sylhet, 3100</p>
             </div>
           </div>
         </div>

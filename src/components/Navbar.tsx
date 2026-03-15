@@ -1,17 +1,33 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import { motion, AnimatePresence } from 'motion/react';
+import { UserMenu } from './UserMenu';
+import { LogoutOverlay } from './LogoutOverlay';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user, logout } = useAuth();
   const { itemCount, items } = useCart();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+  };
+
+  const completeLogout = async () => {
+    await logout();
+    setIsLoggingOut(false);
+    navigate('/login');
+  };
 
   return (
     <nav className="sticky top-0 z-50 glass-panel border-b border-white/5">
+      <LogoutOverlay isVisible={isLoggingOut} onComplete={completeLogout} />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
           <div className="flex items-center">
@@ -39,13 +55,7 @@ export function Navbar() {
               )}
             </Link>
             {user ? (
-              <div className="flex items-center space-x-4">
-                <Link to={user.role === 'admin' ? '/admin' : '/profile'} className="hover:text-gold transition-colors flex items-center space-x-2">
-                  <User size={20} />
-                  <span className="text-sm">{user.name.split(' ')[0]}</span>
-                </Link>
-                <button onClick={logout} className="text-xs opacity-50 hover:opacity-100">Logout</button>
-              </div>
+              <UserMenu onLogout={handleLogout} />
             ) : (
               <Link to="/login" className="hover:text-gold transition-colors"><User size={20} /></Link>
             )}
@@ -76,7 +86,7 @@ export function Navbar() {
               {user ? (
                 <>
                   <Link to="/profile" className="block text-lg" onClick={() => setIsOpen(false)}>Profile</Link>
-                  <button onClick={() => { logout(); setIsOpen(false); }} className="block text-lg text-red-500">Logout</button>
+                  <button onClick={() => { handleLogout(); setIsOpen(false); }} className="block text-lg text-red-500">Logout</button>
                 </>
               ) : (
                 <Link to="/login" className="block text-lg" onClick={() => setIsOpen(false)}>Login</Link>

@@ -18,6 +18,27 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  -- Migration: Add columns if they don't exist (for existing databases)
+  -- profile_photo
+  -- phone
+  -- address
+`);
+
+// Add columns individually if they don't exist
+const tableInfo = db.prepare("PRAGMA table_info(users)").all() as any[];
+const columns = tableInfo.map(c => c.name);
+
+if (!columns.includes('profile_photo')) {
+  db.exec("ALTER TABLE users ADD COLUMN profile_photo TEXT");
+}
+if (!columns.includes('phone')) {
+  db.exec("ALTER TABLE users ADD COLUMN phone TEXT");
+}
+if (!columns.includes('address')) {
+  db.exec("ALTER TABLE users ADD COLUMN address TEXT");
+}
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS user_addresses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -63,14 +84,26 @@ db.exec(`
     customer_name TEXT,
     customer_email TEXT,
     phone TEXT,
+    address TEXT,
+    product_name TEXT,
+    size TEXT,
+    color TEXT,
     total_amount REAL NOT NULL,
-    status TEXT DEFAULT 'pending',
+    status TEXT DEFAULT 'Pending',
     payment_method TEXT,
     payment_status TEXT DEFAULT 'unpaid',
     shipping_address TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
+
+  -- Migration: Capitalize statuses for existing orders
+  UPDATE orders SET status = 'Pending' WHERE status = 'pending';
+  UPDATE orders SET status = 'Confirmed' WHERE status = 'confirmed';
+  UPDATE orders SET status = 'Processing' WHERE status = 'processing';
+  UPDATE orders SET status = 'Shipped' WHERE status = 'shipped';
+  UPDATE orders SET status = 'Delivered' WHERE status = 'delivered';
+  UPDATE orders SET status = 'Canceled' WHERE status = 'canceled';
 
   CREATE TABLE IF NOT EXISTS order_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,17 +141,37 @@ db.exec(`
 // Seed Admin User
 const adminEmail = 'parvezahmed53190@gmail.com';
 const adminPassword = '34996944';
+const adminName = 'Farvez Ahmed';
+const adminPhone = '+880 193996944';
+
 const existingAdmin = db.prepare('SELECT * FROM users WHERE email = ?').get(adminEmail);
 
 if (!existingAdmin) {
   const hashedPassword = bcrypt.hashSync(adminPassword, 10);
-  db.prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)').run(
-    'Admin User',
+  db.prepare('INSERT INTO users (name, email, password, role, phone) VALUES (?, ?, ?, ?, ?)').run(
+    adminName,
     adminEmail,
     hashedPassword,
-    'admin'
+    'admin',
+    adminPhone
   );
   console.log('Admin user seeded.');
+} else {
+  // Ensure existing admin has correct name and phone
+  db.prepare('UPDATE users SET name = ?, phone = ? WHERE email = ?').run(adminName, adminPhone, adminEmail);
+}
+
+// Ensure Admin has the specific address
+const adminRecord: any = db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail);
+if (adminRecord) {
+  const addressExists = db.prepare('SELECT id FROM user_addresses WHERE user_id = ? AND address LIKE ?').get(adminRecord.id, '%Humaun Rashid cattar%');
+  if (!addressExists) {
+    db.prepare(`
+      INSERT INTO user_addresses (user_id, customer_name, address, city, zip, country, phone)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(adminRecord.id, adminName, 'Humaun Rashid cattar, Dakshin surma', 'Sylhet', '3100', 'Bangladesh', adminPhone);
+    console.log('Admin address seeded.');
+  }
 }
 
 // Seed some categories if empty
@@ -240,9 +293,9 @@ if (orderCount.count === 0) {
       const dateStr = date.toISOString().split('T')[0] + ' 12:00:00';
       
       // Add 1-2 orders per day
-      insertOrder.run(adminUser.id, 'Test Customer', 'test@example.com', '01700000000', 100 + (i * 50), 'delivered', 'cod', 'paid', 'Dhaka, Bangladesh', dateStr);
+      insertOrder.run(adminUser.id, 'Test Customer', 'test@example.com', '01700000000', 100 + (i * 50), 'Delivered', 'cod', 'paid', 'Dhaka, Bangladesh', dateStr);
       if (i % 2 === 0) {
-        insertOrder.run(adminUser.id, 'Another Customer', 'another@example.com', '01800000000', 200 + (i * 20), 'pending', 'cod', 'unpaid', 'Chittagong, Bangladesh', dateStr);
+        insertOrder.run(adminUser.id, 'Another Customer', 'another@example.com', '01800000000', 200 + (i * 20), 'Pending', 'cod', 'unpaid', 'Chittagong, Bangladesh', dateStr);
       }
     }
     console.log('Seed orders created.');

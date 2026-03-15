@@ -192,6 +192,44 @@ async function startServer() {
     }
   });
 
+  app.patch('/api/admin/products/:id', authenticate, isAdmin, (req, res) => {
+    const { name, slug, description, price, discount_price, stock, sku, category_id, images, variants, is_featured, is_trending } = req.body;
+    try {
+      const updates = [];
+      const params = [];
+
+      if (name !== undefined) { updates.push('name = ?'); params.push(name); }
+      if (slug !== undefined) { updates.push('slug = ?'); params.push(slug); }
+      if (description !== undefined) { updates.push('description = ?'); params.push(description); }
+      if (price !== undefined) { updates.push('price = ?'); params.push(price); }
+      if (discount_price !== undefined) { updates.push('discount_price = ?'); params.push(discount_price); }
+      if (stock !== undefined) { updates.push('stock = ?'); params.push(stock); }
+      if (sku !== undefined) { updates.push('sku = ?'); params.push(sku); }
+      if (category_id !== undefined) { updates.push('category_id = ?'); params.push(category_id); }
+      if (images !== undefined) { updates.push('images = ?'); params.push(JSON.stringify(images)); }
+      if (variants !== undefined) { updates.push('variants = ?'); params.push(JSON.stringify(variants)); }
+      if (is_featured !== undefined) { updates.push('is_featured = ?'); params.push(is_featured ? 1 : 0); }
+      if (is_trending !== undefined) { updates.push('is_trending = ?'); params.push(is_trending ? 1 : 0); }
+
+      if (updates.length === 0) return res.status(400).json({ error: 'No updates provided' });
+
+      params.push(req.params.id);
+      db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/products/:id', authenticate, isAdmin, (req, res) => {
+    try {
+      db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   app.get('/api/admin/stats', authenticate, isAdmin, (req, res) => {
     const totalOrders = db.prepare('SELECT COUNT(*) as count FROM orders').get() as any;
     const totalRevenue = db.prepare("SELECT SUM(total_amount) as sum FROM orders WHERE status != 'canceled'").get() as any;
@@ -236,6 +274,19 @@ async function startServer() {
     res.json(ordersWithItems);
   });
 
+  app.post('/api/orders', (req, res) => {
+    const { customer_id, customer_name, phone, address, product_name, size, color, total_amount, payment_method } = req.body;
+    try {
+      const result = db.prepare(`
+        INSERT INTO orders (user_id, customer_name, phone, address, product_name, size, color, total_amount, status, payment_method)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?)
+      `).run(customer_id || null, customer_name, phone, address, product_name, size, color, total_amount, payment_method || 'COD');
+      res.json({ success: true, order_id: result.lastInsertRowid });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   app.patch('/api/admin/orders/:id/status', authenticate, isAdmin, (req, res) => {
     const { status, payment_status } = req.body;
     const updates = [];
@@ -266,6 +317,21 @@ async function startServer() {
         SET name = ?, email = ?, phone = ?, address = ?, profile_photo = ? 
         WHERE id = ?
       `).run(name, email, phone, address, profile_photo, req.user.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.patch('/api/admin/password', authenticate, isAdmin, (req: any, res) => {
+    const { currentPassword, newPassword } = req.body;
+    try {
+      const user: any = db.prepare('SELECT password FROM users WHERE id = ?').get(req.user.id);
+      if (!bcrypt.compareSync(currentPassword, user.password)) {
+        return res.status(401).json({ error: 'Current password incorrect' });
+      }
+      const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
+      db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedNewPassword, req.user.id);
       res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ error: err.message });

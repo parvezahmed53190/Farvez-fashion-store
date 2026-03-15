@@ -17,6 +17,7 @@ import { Shipping } from './pages/Shipping';
 import { Profile } from './pages/Profile';
 import { Terms } from './pages/Terms';
 import { Privacy } from './pages/Privacy';
+import { PlaceOrder } from './pages/PlaceOrder';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Toaster } from './components/Toaster';
 import { AIAssistant } from './components/AIAssistant';
@@ -55,6 +56,7 @@ function AppContent() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/place-order" element={<PlaceOrder />} />
           
           {/* Admin Routes */}
           <Route 

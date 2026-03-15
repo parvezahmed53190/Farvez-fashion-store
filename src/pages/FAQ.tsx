@@ -42,8 +42,8 @@ const faqs = [
   {
     questionBn: "৭️⃣ কাস্টমার সাপোর্ট কিভাবে পাবো?",
     questionEn: "7️⃣ How can I contact customer support?",
-    answerBn: "📞 Mobile: 01934896944\n🌐 Facebook: https://www.facebook.com/share/1MuvYSfBrP/\n📧 Email: parvezahmed53190@gmail.com",
-    answerEn: "📞 Mobile: 01934896944\n🌐 Facebook: https://www.facebook.com/share/1MuvYSfBrP/\n📧 Email: parvezahmed53190@gmail.com"
+    answerBn: "📞 Mobile: +880 193996944\n🌐 Facebook: https://www.facebook.com/share/1MuvYSfBrP/\n📧 Email: parvezahmed53190@gmail.com",
+    answerEn: "📞 Mobile: +880 193996944\n🌐 Facebook: https://www.facebook.com/share/1MuvYSfBrP/\n📧 Email: parvezahmed53190@gmail.com"
   },
   {
     questionBn: "৮️⃣ প্রোডাক্ট অরিজিনাল কি?",
@@ -116,7 +116,7 @@ export function FAQ() {
           <a href="mailto:parvezahmed53190@gmail.com" className="gold-gradient text-luxury-black px-8 py-3 font-bold rounded-sm">
             Email Us
           </a>
-          <a href="tel:01934896944" className="border border-gold text-gold px-8 py-3 font-bold rounded-sm hover:bg-gold hover:text-luxury-black transition-all">
+          <a href="tel:+880193996944" className="border border-gold text-gold px-8 py-3 font-bold rounded-sm hover:bg-gold hover:text-luxury-black transition-all">
             Call Support
           </a>
         </div>

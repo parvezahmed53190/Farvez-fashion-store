@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Mail, Phone, MapPin, Send, Facebook, Instagram, Twitter } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, Facebook, Instagram, Twitter, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 
 export function Contact() {
@@ -52,7 +52,7 @@ export function Contact() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Call Us</p>
-                <p className="text-lg font-bold">+8801934896944</p>
+                <p className="text-lg font-bold">+880 193996944</p>
               </div>
             </div>
 
@@ -72,7 +72,25 @@ export function Contact() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Visit Us</p>
-                <p className="text-lg font-bold">123 Fashion Street, Luxury District, Dhaka, Bangladesh</p>
+                <p className="text-lg font-bold">Humaun Rashid cattar, Dakshin surma, Sylhet, 3100</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-4">
+              <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 shrink-0">
+                <MessageSquare size={24} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Live Chat</p>
+                <button 
+                  onClick={() => {
+                    const event = new CustomEvent('open-ai-assistant');
+                    window.dispatchEvent(event);
+                  }}
+                  className="text-lg font-bold text-emerald-500 hover:underline"
+                >
+                  Start a Live Chat
+                </button>
               </div>
             </div>
           </div>
