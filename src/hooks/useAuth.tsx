@@ -20,19 +20,39 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user_info');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        setUser(null);
+        localStorage.removeItem('user_info');
+        return;
+      }
       try {
         const res = await fetch('/api/auth/me', {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
           setUser(data);
+          localStorage.setItem('user_info', JSON.stringify({
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            role: data.role,
+            profile_photo: data.profile_photo
+          }));
+        } else {
+          setUser(null);
+          localStorage.removeItem('user_info');
+          localStorage.removeItem('token');
         }
       } catch (err) {
         console.error('Auth check failed', err);
@@ -46,16 +66,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (token: string, userData: User) => {
     setUser(userData);
     localStorage.setItem('token', token);
+    localStorage.setItem('user_info', JSON.stringify({
+      id: userData.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      profile_photo: userData.profile_photo
+    }));
   };
 
   const logout = async () => {
     const token = localStorage.getItem('token');
-    await fetch('/api/auth/logout', { 
-      method: 'POST',
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-    });
+    try {
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+    } catch (e) {
+      console.error('Logout request failed', e);
+    }
     setUser(null);
     localStorage.removeItem('token');
+    localStorage.removeItem('user_info');
   };
 
   return (

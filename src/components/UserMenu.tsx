@@ -8,7 +8,8 @@ import {
   Bell, 
   HelpCircle, 
   LogOut, 
-  ChevronDown 
+  ChevronDown,
+  LayoutDashboard 
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -35,6 +36,7 @@ export function UserMenu({ onLogout }: UserMenuProps) {
   if (!user) return null;
 
   const menuItems = [
+    ...(user.role === 'admin' ? [{ icon: LayoutDashboard, label: 'Admin Dashboard', path: '/admin' }] : []),
     { icon: User, label: 'View Profile', path: '/profile' },
     { icon: Settings, label: 'Settings', path: '/profile?tab=settings' },
     { icon: ShoppingBag, label: 'Orders', path: '/profile?tab=orders' },
@@ -88,17 +90,24 @@ export function UserMenu({ onLogout }: UserMenuProps) {
             </div>
 
             <div className="p-2">
-              {menuItems.map((item, index) => (
-                <Link
-                  key={index}
-                  to={item.path}
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-all group"
-                >
-                  <item.icon size={18} className="text-gray-500 group-hover:text-gold transition-colors" />
-                  <span className="text-sm font-medium">{item.label}</span>
-                </Link>
-              ))}
+              {menuItems.map((item, index) => {
+                const isAdminLink = item.label === 'Admin Dashboard';
+                return (
+                  <Link
+                    key={index}
+                    to={item.path}
+                    onClick={() => setIsOpen(false)}
+                    className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all group ${
+                      isAdminLink 
+                        ? 'bg-gold/10 text-gold border border-gold/20 mb-2 hover:bg-gold/20' 
+                        : 'text-gray-300 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <item.icon size={18} className={`${isAdminLink ? 'text-gold' : 'text-gray-500 group-hover:text-gold'} transition-colors`} />
+                    <span className={`text-sm font-medium ${isAdminLink ? 'font-bold uppercase tracking-wider' : ''}`}>{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
 
             <div className="p-2 border-t border-white/5 bg-white/[0.01]">

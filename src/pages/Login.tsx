@@ -25,7 +25,13 @@ export function Login() {
       const data = await res.json();
       if (res.ok) {
         login(data.token, data.user);
-        navigate(data.user.role === 'admin' ? '/admin' : '/');
+        const redirectPath = localStorage.getItem('redirect_after_login');
+        if (redirectPath) {
+          localStorage.removeItem('redirect_after_login');
+          navigate(redirectPath);
+        } else {
+          navigate(data.user.role === 'admin' ? '/admin' : '/');
+        }
       } else {
         setError(data.error);
       }

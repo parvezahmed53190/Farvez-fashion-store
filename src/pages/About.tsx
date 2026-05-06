@@ -95,7 +95,7 @@ export function About() {
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Mobile</p>
-              <p className="font-bold">+880 193996944</p>
+              <p className="font-bold">+880 1934996944</p>
             </div>
           </div>
           <div className="flex flex-col items-center space-y-3 text-center">
@@ -122,7 +122,7 @@ export function About() {
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Address</p>
-              <p className="font-bold">Humaun Rashid cattar, Dakshin surma, Sylhet, 3100</p>
+              <p className="font-bold">Mominkhola, Sylhet 3100, dakshin surma, sylhet.</p>
             </div>
           </div>
         </div>

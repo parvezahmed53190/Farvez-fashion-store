@@ -47,11 +47,11 @@ export function Footer() {
             <ul className="space-y-4 text-sm text-gray-400">
               <li className="flex items-start space-x-3">
                 <MapPin size={18} className="text-gold shrink-0" />
-                <span>123 Fashion Street, Luxury District, Dhaka, Bangladesh</span>
+                <span>Mominkhola, Sylhet 3100, dakshin surma, sylhet.</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Phone size={18} className="text-gold shrink-0" />
-                <span>+880 193996944</span>
+                <span>+880 1934996944</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Mail size={18} className="text-gold shrink-0" />

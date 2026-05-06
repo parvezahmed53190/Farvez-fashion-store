@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Order, OrderStatus } from '../types/order';
 import { 
@@ -59,10 +60,12 @@ interface Notification {
 
 export function Profile() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [orderFilter, setOrderFilter] = useState('All');
   
   // Addresses State
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -119,8 +122,8 @@ export function Profile() {
 
         // Mock Addresses
         setAddresses([
-          { id: '1', type: 'Home', name: 'Farvez Ahmed', phone: '+880 1700-000000', address: '123 Luxury Lane, Gulshan', city: 'Dhaka', zip: '1212', isDefault: true },
-          { id: '2', type: 'Work', name: 'Farvez Ahmed', phone: '+880 1700-000000', address: 'Tech Tower, Level 12, Banani', city: 'Dhaka', zip: '1213', isDefault: false }
+          { id: '1', type: 'Home', name: 'Farvez Ahmed', phone: '+880 1934996944', address: 'Mominkhola, Sylhet 3100, dakshin surma', city: 'Sylhet', zip: '3100', isDefault: true },
+          { id: '2', type: 'Work', name: 'Farvez Ahmed', phone: '+880 1934996944', address: 'Humaun Rashid cattar, Dakshin surma', city: 'Sylhet', zip: '3100', isDefault: false }
         ]);
 
         // Mock Notifications
@@ -218,6 +221,17 @@ export function Profile() {
       }]);
     }, 1000);
   };
+
+  const filteredOrders = orders.filter(order => {
+    if (orderFilter === 'All') return true;
+    if (orderFilter === 'Active') {
+      return [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.SHIPPED].includes(order.status);
+    }
+    if (orderFilter === 'Completed') {
+      return order.status === OrderStatus.DELIVERED;
+    }
+    return true;
+  });
 
   if (!user) return null;
 
@@ -351,9 +365,24 @@ export function Profile() {
                   <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-serif font-bold">Order History</h2>
                     <div className="flex items-center gap-2 bg-white/5 rounded-lg p-1">
-                      <button className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-gold text-luxury-black rounded-md">All</button>
-                      <button className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors">Active</button>
-                      <button className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors">Completed</button>
+                      <button 
+                        onClick={() => setOrderFilter('All')}
+                        className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${orderFilter === 'All' ? 'bg-gold text-luxury-black' : 'text-gray-500 hover:text-white'}`}
+                      >
+                        All
+                      </button>
+                      <button 
+                        onClick={() => setOrderFilter('Active')}
+                        className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${orderFilter === 'Active' ? 'bg-gold text-luxury-black' : 'text-gray-500 hover:text-white'}`}
+                      >
+                        Active
+                      </button>
+                      <button 
+                        onClick={() => setOrderFilter('Completed')}
+                        className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${orderFilter === 'Completed' ? 'bg-gold text-luxury-black' : 'text-gray-500 hover:text-white'}`}
+                      >
+                        Completed
+                      </button>
                     </div>
                   </div>
 
@@ -374,22 +403,30 @@ export function Profile() {
                         </div>
                       ))}
                     </div>
-                  ) : orders.length === 0 ? (
+                  ) : filteredOrders.length === 0 ? (
                     <div className="luxury-card p-16 text-center space-y-6">
                       <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto">
                         <Package className="text-gray-700" size={40} />
                       </div>
                       <div className="space-y-2">
-                        <h3 className="text-xl font-bold">No orders found</h3>
-                        <p className="text-gray-500 max-w-xs mx-auto">It looks like you haven't placed any orders yet. Start exploring our collection!</p>
+                        <h3 className="text-xl font-bold">No {orderFilter !== 'All' ? orderFilter.toLowerCase() : ''} orders found</h3>
+                        <p className="text-gray-500 max-w-xs mx-auto">
+                          {orders.length === 0 
+                            ? "It looks like you haven't placed any orders yet. Start exploring our collection!"
+                            : `You don't have any ${orderFilter.toLowerCase()} orders at the moment.`
+                          }
+                        </p>
                       </div>
-                      <button className="gold-gradient text-luxury-black font-bold px-10 py-3 rounded-full hover:scale-105 transition-transform">
+                      <button 
+                        onClick={() => navigate('/shop')}
+                        className="gold-gradient text-luxury-black font-bold px-10 py-3 rounded-full hover:scale-105 transition-transform"
+                      >
                         Explore Collection
                       </button>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {orders.map((order) => (
+                      {filteredOrders.map((order) => (
                         <motion.div 
                           layout
                           key={order.id} 
@@ -446,11 +483,39 @@ export function Profile() {
                                           <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                                             <div className="flex items-center gap-4">
                                               <div className="w-16 h-16 rounded-lg overflow-hidden bg-luxury-gray">
-                                                <img src={item.image || 'https://picsum.photos/seed/fashion/80/80'} alt={item.name} className="w-full h-full object-cover" />
+                                                <img 
+                                                  src={item.image || 'https://picsum.photos/seed/fashion/80/80'} 
+                                                  alt={item.name} 
+                                                  className="w-full h-full object-cover" 
+                                                  referrerPolicy="no-referrer"
+                                                />
                                               </div>
                                               <div>
                                                 <p className="font-bold text-sm">{item.name}</p>
-                                                <p className="text-xs text-gray-500">Qty: {item.quantity} • {order.size || 'M'} • {order.color || 'Black'}</p>
+                                                <p className="text-xs text-gray-500">
+                                                  Qty: {item.quantity}
+                                                  {item.variant && (() => {
+                                                    try {
+                                                      const variant = JSON.parse(item.variant);
+                                                      return (
+                                                        <>
+                                                          {' • '}
+                                                          {Object.entries(variant)
+                                                            .map(([key, value]) => `${key}: ${value}`)
+                                                            .join(' • ')}
+                                                        </>
+                                                      );
+                                                    } catch (e) {
+                                                      return ' • Standard Edition';
+                                                    }
+                                                  })()}
+                                                  {!item.variant && (order.size || order.color) && (
+                                                    <>
+                                                      {' • '}
+                                                      {[order.size, order.color].filter(Boolean).join(' • ')}
+                                                    </>
+                                                  )}
+                                                </p>
                                               </div>
                                             </div>
                                             <p className="font-bold text-gold">${item.price}</p>
@@ -564,7 +629,7 @@ export function Profile() {
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gold transition-colors" size={16} />
                             <input 
                               type="tel" 
-                              defaultValue={user.phone || '+880 1700-000000'}
+                              defaultValue={user.phone || '+880 1934996944'}
                               className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:border-gold outline-none transition-all"
                             />
                           </div>
@@ -876,7 +941,13 @@ export function Profile() {
                           <h3 className="font-bold">Live Chat</h3>
                           <p className="text-xs text-gray-500">Our support team is available 24/7 to assist you.</p>
                         </div>
-                        <button className="w-full gold-gradient text-luxury-black font-bold py-3 rounded-full hover:scale-105 transition-transform">
+                        <button 
+                          onClick={() => {
+                            const event = new CustomEvent('open-ai-assistant');
+                            window.dispatchEvent(event);
+                          }}
+                          className="w-full gold-gradient text-luxury-black font-bold py-3 rounded-full hover:scale-105 transition-transform"
+                        >
                           Start Chat
                         </button>
                       </div>
@@ -884,22 +955,22 @@ export function Profile() {
                       <div className="luxury-card p-8 space-y-6">
                         <h3 className="text-xs font-bold text-gold uppercase tracking-widest text-center">Contact Options</h3>
                         <div className="space-y-4">
-                          <a href="mailto:support@farvez.com" className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors group">
+                          <a href="mailto:parvezahmed53190@gmail.com" className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors group">
                             <div className="p-2 bg-white/5 rounded-lg group-hover:text-gold transition-colors">
                               <Mail size={16} />
                             </div>
                             <div className="text-left">
                               <p className="text-xs font-bold">Email Us</p>
-                              <p className="text-[10px] text-gray-500">support@farvez.com</p>
+                              <p className="text-[10px] text-gray-500">parvezahmed53190@gmail.com</p>
                             </div>
                           </a>
-                          <a href="tel:+8801700000000" className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors group">
+                          <a href="tel:+8801934996944" className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors group">
                             <div className="p-2 bg-white/5 rounded-lg group-hover:text-gold transition-colors">
                               <Phone size={16} />
                             </div>
                             <div className="text-left">
                               <p className="text-xs font-bold">Call Us</p>
-                              <p className="text-[10px] text-gray-500">+880 1700-000000</p>
+                              <p className="text-[10px] text-gray-500">+880 1934996944</p>
                             </div>
                           </a>
                         </div>

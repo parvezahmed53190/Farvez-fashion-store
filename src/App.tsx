@@ -18,11 +18,13 @@ import { Profile } from './pages/Profile';
 import { Terms } from './pages/Terms';
 import { Privacy } from './pages/Privacy';
 import { PlaceOrder } from './pages/PlaceOrder';
+import { Wishlist } from './pages/Wishlist';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Toaster } from './components/Toaster';
 import { AIAssistant } from './components/AIAssistant';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { CartProvider } from './hooks/useCart';
+import { WishlistProvider } from './hooks/useWishlist';
 import { useLocation } from 'react-router-dom';
 
 function AppContent() {
@@ -45,6 +47,7 @@ function AppContent() {
           <Route path="/shop" element={<Shop />} />
           <Route path="/product/:slug" element={<ProductDetails />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -76,9 +79,11 @@ export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <WishlistProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </WishlistProvider>
       </CartProvider>
     </AuthProvider>
   );

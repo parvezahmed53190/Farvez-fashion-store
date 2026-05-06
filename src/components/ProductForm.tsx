@@ -42,7 +42,7 @@ export function ProductForm({ onClose, onSuccess, product }: ProductFormProps) {
     try {
       const token = localStorage.getItem('token');
       const url = product ? `/api/admin/products/${product.id}` : '/api/admin/products';
-      const method = product ? 'PUT' : 'POST';
+      const method = product ? 'PATCH' : 'POST';
 
       const res = await fetch(url, {
         method,

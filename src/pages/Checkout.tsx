@@ -7,7 +7,7 @@ import { createOrder } from '../services/orderService';
 import { OrderItem } from '../types/order';
 
 export function Checkout() {
-  const { items, total } = useCart();
+  const { items, total, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -24,12 +24,6 @@ export function Checkout() {
   });
 
   const handlePlaceOrder = async () => {
-    if (!user) {
-      alert('Please login to place an order');
-      navigate('/login');
-      return;
-    }
-
     if (!formData.address || !formData.phone || !formData.firstName) {
       alert('Please fill in all required fields');
       return;
@@ -50,7 +44,8 @@ export function Checkout() {
           items: items.map(item => ({
             product_id: item.id,
             quantity: item.quantity,
-            price: item.discount_price || item.price
+            price: item.discount_price || item.price,
+            variant: item.variant
           })),
           totalAmount: total,
           shippingAddress: `${formData.address}, ${formData.city}, ${formData.zip}`,
@@ -63,8 +58,13 @@ export function Checkout() {
         throw new Error(data.error || 'Failed to place order');
       }
 
+      clearCart();
       alert('Order placed successfully! Thank you for shopping with Farvez Fashion.');
-      navigate('/profile');
+      if (user) {
+        navigate('/profile');
+      } else {
+        navigate('/');
+      }
     } catch (error: any) {
       console.error('Error placing order:', error);
       alert(error.message || 'Failed to place order. Please try again.');
@@ -184,12 +184,25 @@ export function Checkout() {
             <h3 className="text-xl font-serif font-bold border-b border-white/5 pb-4">Your Order</h3>
             <div className="max-h-64 overflow-y-auto space-y-4 pr-2">
               {items.map(item => (
-                <div key={item.id} className="flex space-x-4">
+                <div key={`${item.id}-${item.variant}`} className="flex space-x-4">
                   <div className="w-16 h-20 shrink-0">
-                    <img src={item.image} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                    <img src={item.image || null} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                   </div>
                   <div className="flex-grow text-sm">
                     <div className="font-bold truncate">{item.name}</div>
+                    {item.variant && (() => {
+                      try {
+                        const variant = JSON.parse(item.variant);
+                        return (
+                          <div className="text-[10px] text-gold uppercase tracking-widest">
+                            {variant.size && <span>Size: {variant.size} </span>}
+                            {variant.color && <span>Color: {variant.color}</span>}
+                          </div>
+                        );
+                      } catch (e) {
+                        return <div className="text-[10px] text-gold uppercase tracking-widest">Standard Edition</div>;
+                      }
+                    })()}
                     <div className="text-gray-500">Qty: {item.quantity}</div>
                     <div className="text-gold font-bold mt-1">${(item.discount_price || item.price) * item.quantity}</div>
                   </div>

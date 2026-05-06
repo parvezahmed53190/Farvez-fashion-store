@@ -7,16 +7,25 @@ interface AdminAIAssistantProps {
   stats?: any;
   products?: any[];
   orders?: any[];
+  customers?: any[];
+  subscribers?: any[];
+  messages?: any[];
   onRefresh?: () => void;
 }
 
-export function AdminAIAssistant({ stats, products, orders, onRefresh }: AdminAIAssistantProps) {
+export function AdminAIAssistant({ stats, products, orders, customers, subscribers, messages: supportMessages, onRefresh }: AdminAIAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: string, text: string }[]>(() => {
-    const saved = localStorage.getItem('admin_chat_history');
-    return saved ? JSON.parse(saved) : [
-      { role: 'assistant', text: 'Welcome to the Admin Command Center. I am your specialized AI Operations Assistant. How can I help you optimize Farvez Fashion Store today?' }
-    ];
+    try {
+      const saved = localStorage.getItem('admin_chat_history');
+      return saved ? JSON.parse(saved) : [
+        { role: 'assistant', text: 'Welcome to the Admin Command Center. I am your specialized AI Operations Assistant. How can I help you optimize Farvez Fashion Store today?' }
+      ];
+    } catch (e) {
+      return [
+        { role: 'assistant', text: 'Welcome to the Admin Command Center. I am your specialized AI Operations Assistant. How can I help you optimize Farvez Fashion Store today?' }
+      ];
+    }
   });
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -35,7 +44,14 @@ export function AdminAIAssistant({ stats, products, orders, onRefresh }: AdminAI
       setMessages(prev => [...prev, { role: 'assistant', text: `🔔 System Notification: ${msg}` }]);
     };
     window.addEventListener('app-notification', handleNotification);
-    return () => window.removeEventListener('app-notification', handleNotification);
+    
+    const handleOpenChat = () => setIsOpen(true);
+    window.addEventListener('open-admin-chat', handleOpenChat);
+
+    return () => {
+      window.removeEventListener('app-notification', handleNotification);
+      window.removeEventListener('open-admin-chat', handleOpenChat);
+    };
   }, []);
 
   const tools: { functionDeclarations: FunctionDeclaration[] }[] = [
@@ -146,6 +162,21 @@ export function AdminAIAssistant({ stats, products, orders, onRefresh }: AdminAI
             },
             required: ["id"]
           }
+        },
+        {
+          name: "listCustomers",
+          description: "Retrieve a list of registered customers.",
+          parameters: { type: Type.OBJECT, properties: {} }
+        },
+        {
+          name: "listNewsletterSubscribers",
+          description: "Retrieve a list of newsletter subscribers.",
+          parameters: { type: Type.OBJECT, properties: {} }
+        },
+        {
+          name: "listSupportMessages",
+          description: "Retrieve a list of support inquiries from the contact form.",
+          parameters: { type: Type.OBJECT, properties: {} }
         }
       ]
     }
@@ -167,7 +198,10 @@ export function AdminAIAssistant({ stats, products, orders, onRefresh }: AdminAI
         totalOrders: orders?.length || 0,
         recentRevenue: stats?.revenue || 0,
         pendingOrders: orders?.filter(o => o.status === 'Pending').length || 0,
-        lowStockItems: products?.filter(p => p.stock < 5).length || 0
+        lowStockItems: products?.filter(p => p.stock < 5).length || 0,
+        totalCustomers: customers?.length || 0,
+        newsletterSubscribers: subscribers?.length || 0,
+        unreadMessages: supportMessages?.filter(m => !m.is_read).length || 0
       };
 
       const response = await ai.models.generateContent({
@@ -176,7 +210,7 @@ export function AdminAIAssistant({ stats, products, orders, onRefresh }: AdminAI
         config: {
           tools,
           systemInstruction: `You are the specialized Admin AI Operations Assistant for Farvez Fashion Store. 
-Your role is to assist the administrator (Farvez Ahmed - Phone: +880 193996944, Email: parvezahmed53190@gmail.com, Address: Humaun Rashid cattar, Dakshin surma, Sylhet, 3100) in managing the store, personal info, addresses, and products efficiently.
+Your role is to assist the administrator (Farvez Ahmed - Phone: +880 1934996944, Email: parvezahmed53190@gmail.com, Address: Mominkhola, Sylhet 3100, dakshin surma, sylhet.) in managing the store, personal info, addresses, products, customers, and support inquiries.
 
 Current Store Context:
 - Total Products: ${context.totalProducts}
@@ -184,17 +218,19 @@ Current Store Context:
 - Total Revenue: $${context.recentRevenue}
 - Pending Orders: ${context.pendingOrders}
 - Low Stock Items: ${context.lowStockItems}
+- Registered Customers: ${context.totalCustomers}
+- Newsletter Subscribers: ${context.newsletterSubscribers}
+- Unread Support Messages: ${context.unreadMessages}
 
 Your Capabilities:
 1. Personal Info: View/Edit name, email, phone, profile details.
 2. Addresses: Add, edit, or delete addresses.
 3. Password: Securely change password (requires current password).
-4. Product Management:
-   - View all products (list names, prices, stock).
-   - View full product details (description, SKU, category, images).
-   - Edit any product field (name, price, stock, etc.).
-   - Delete products permanently (always ask for confirmation if not explicitly confirmed).
-5. Order Management: Guide on status updates and inventory.
+4. Product Management: View list, view details, edit, or delete.
+5. Customer Insights: List registered customers and their info.
+6. Marketing: List newsletter subscribers.
+7. Support: List inquiries and messages from customers.
+8. Productivity: Guide the admin on status updates and business optimization.
 
 Tone & Language:
 - Professional, efficient, and polite.
@@ -298,6 +334,21 @@ Rules:
             });
             result = await res.json();
             if (onRefresh) onRefresh();
+          } else if (name === 'listCustomers') {
+            const res = await fetch('/api/admin/users', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            result = await res.json();
+          } else if (name === 'listNewsletterSubscribers') {
+            const res = await fetch('/api/admin/newsletter', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            result = await res.json();
+          } else if (name === 'listSupportMessages') {
+            const res = await fetch('/api/admin/messages', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            result = await res.json();
           }
 
           // Send function response back to AI

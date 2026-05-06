@@ -1,10 +1,22 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
+import { useAuth } from '../hooks/useAuth';
 import { Trash2, ShoppingBag, ArrowRight, Minus, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export function Cart() {
   const { items, removeFromCart, updateQuantity, total } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleCheckout = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      // Save current path to return after login
+      localStorage.setItem('redirect_after_login', '/checkout');
+      navigate('/login');
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -32,36 +44,49 @@ export function Cart() {
         <div className="lg:col-span-2 space-y-6">
           {items.map((item) => (
             <motion.div 
-              key={item.id}
+              key={`${item.id}-${item.variant}`}
               layout
               className="luxury-card p-6 flex items-center space-x-6"
             >
               <div className="w-24 h-32 overflow-hidden shrink-0">
-                <img src={item.image} className="w-full h-full object-cover" alt={item.name} referrerPolicy="no-referrer" />
+                <img src={item.image || null} className="w-full h-full object-cover" alt={item.name} referrerPolicy="no-referrer" />
               </div>
               <div className="flex-grow">
                 <div className="flex justify-between items-start">
                   <div>
                     <Link to={`/product/${item.slug}`} className="font-serif text-lg hover:text-gold transition-colors">{item.name}</Link>
+                    {item.variant && (() => {
+                      try {
+                        const variant = JSON.parse(item.variant);
+                        return (
+                          <div className="text-[10px] text-gold uppercase tracking-widest mt-1 flex gap-2">
+                            {variant.size && <span>Size: {variant.size}</span>}
+                            {variant.color && <span>Color: {variant.color}</span>}
+                          </div>
+                        );
+                      } catch (e) {
+                        return <div className="text-[10px] text-gold uppercase tracking-widest mt-1">Standard Edition</div>;
+                      }
+                    })()}
                     <div className="text-xs text-gray-500 mt-1">
                       Unit Price: ${item.discount_price || item.price}
                     </div>
                   </div>
-                  <button onClick={() => removeFromCart(item.id)} className="text-gray-500 hover:text-red-500 transition-colors">
+                  <button onClick={() => removeFromCart(item.id, item.variant)} className="text-gray-500 hover:text-red-500 transition-colors">
                     <Trash2 size={18} />
                   </button>
                 </div>
                 <div className="flex justify-between items-center mt-6">
                   <div className="flex items-center border border-white/10 text-sm">
                     <button 
-                      onClick={() => updateQuantity(item.id, -1)}
+                      onClick={() => updateQuantity(item.id, -1, item.variant)}
                       className="px-3 py-1 hover:text-gold"
                     >
                       <Minus size={14} />
                     </button>
                     <span className="px-3 py-1 border-x border-white/10">{item.quantity}</span>
                     <button 
-                      onClick={() => updateQuantity(item.id, 1)}
+                      onClick={() => updateQuantity(item.id, 1, item.variant)}
                       className="px-3 py-1 hover:text-gold"
                     >
                       <Plus size={14} />
@@ -98,7 +123,11 @@ export function Cart() {
                 <span className="text-gold">${total.toFixed(2)}</span>
               </div>
             </div>
-            <Link to="/checkout" className="w-full gold-gradient text-luxury-black font-bold py-4 rounded-sm flex items-center justify-center group">
+            <Link 
+              to="/checkout" 
+              onClick={handleCheckout}
+              className="w-full gold-gradient text-luxury-black font-bold py-4 rounded-sm flex items-center justify-center group"
+            >
               Proceed to Checkout <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={20} />
             </Link>
           </div>

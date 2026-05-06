@@ -12,15 +12,28 @@ export function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        setSubmitted(true);
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        alert('Failed to send message. Please try again.');
+      }
+    } catch (err) {
+      alert('An error occurred. Please try again.');
+    } finally {
       setIsSubmitting(false);
-      setSubmitted(true);
-      setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 1500);
+    }
   };
 
   return (
@@ -52,7 +65,7 @@ export function Contact() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Call Us</p>
-                <p className="text-lg font-bold">+880 193996944</p>
+                <p className="text-lg font-bold">+880 1934996944</p>
               </div>
             </div>
 
@@ -72,7 +85,7 @@ export function Contact() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Visit Us</p>
-                <p className="text-lg font-bold">Humaun Rashid cattar, Dakshin surma, Sylhet, 3100</p>
+                <p className="text-lg font-bold">Mominkhola, Sylhet 3100, dakshin surma, sylhet.</p>
               </div>
             </div>
 

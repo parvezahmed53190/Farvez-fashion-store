@@ -38,7 +38,13 @@ export function Register() {
       const data = await res.json();
       if (res.ok) {
         login(data.token, data.user);
-        navigate('/');
+        const redirectPath = localStorage.getItem('redirect_after_login');
+        if (redirectPath) {
+          localStorage.removeItem('redirect_after_login');
+          navigate(redirectPath);
+        } else {
+          navigate('/');
+        }
       } else {
         setError(data.error);
       }

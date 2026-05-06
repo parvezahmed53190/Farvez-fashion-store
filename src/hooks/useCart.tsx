@@ -9,13 +9,14 @@ export interface CartItem {
   quantity: number;
   image: string;
   slug: string;
+  variant?: string; // JSON string of selected variant
 }
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: any, quantity?: number) => void;
-  removeFromCart: (productId: number) => void;
-  updateQuantity: (productId: number, delta: number) => void;
+  addToCart: (product: any, quantity?: number, variant?: any) => void;
+  removeFromCart: (productId: number, variant?: string) => void;
+  updateQuantity: (productId: number, delta: number, variant?: string) => void;
   clearCart: () => void;
   total: number;
   itemCount: number;
@@ -33,14 +34,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('farvez_cart', JSON.stringify(items));
   }, [items]);
 
-  const addToCart = (product: any, quantity: number = 1) => {
+  const addToCart = (product: any, quantity: number = 1, variant: any = null) => {
+    const variantStr = variant ? JSON.stringify(variant) : undefined;
+    
     setItems(prevItems => {
-      const existingItem = prevItems.find(item => item.id === product.id);
+      const existingItem = prevItems.find(item => 
+        item.id === product.id && item.variant === variantStr
+      );
+      
       if (existingItem) {
         return prevItems.map(item =>
-          item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
+          (item.id === product.id && item.variant === variantStr) 
+            ? { ...item, quantity: item.quantity + quantity } 
+            : item
         );
       }
+      
       return [...prevItems, {
         id: product.id,
         name: product.name,
@@ -48,7 +57,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         discount_price: product.discount_price,
         quantity: quantity,
         image: product.image || (product.images && product.images[0]),
-        slug: product.slug
+        slug: product.slug,
+        variant: variantStr
       }];
     });
     
@@ -58,13 +68,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const removeFromCart = (productId: number) => {
-    setItems(prevItems => prevItems.filter(item => item.id !== productId));
+  const removeFromCart = (productId: number, variant?: string) => {
+    setItems(prevItems => prevItems.filter(item => 
+      !(item.id === productId && item.variant === variant)
+    ));
   };
 
-  const updateQuantity = (productId: number, delta: number) => {
+  const updateQuantity = (productId: number, delta: number, variant?: string) => {
     setItems(prevItems => prevItems.map(item => {
-      if (item.id === productId) {
+      if (item.id === productId && item.variant === variant) {
         const newQty = Math.max(1, item.quantity + delta);
         return { ...item, quantity: newQty };
       }

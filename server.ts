@@ -38,12 +38,38 @@ async function startServer() {
     next();
   };
 
+  const tryAuthenticate = (req: any, res: any, next: any) => {
+    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+      } catch (err) {
+        // Ignore invalid token for optional auth
+      }
+    }
+    next();
+  };
+
+  // --- Notification Helper ---
+  const createNotification = (type: string, title: string, message: string, link?: string) => {
+    try {
+      db.prepare('INSERT INTO notifications (type, title, message, link) VALUES (?, ?, ?, ?)').run(type, title, message, link || null);
+    } catch (err) {
+      console.error('Failed to create notification:', err);
+    }
+  };
+
   // --- Auth Routes ---
   app.post('/api/auth/register', (req, res) => {
     const { name, email, password } = req.body;
     try {
       const hashedPassword = bcrypt.hashSync(password, 10);
       const result = db.prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)').run(name, email, hashedPassword);
+      
+      // Notify admin about new user
+      createNotification('user', 'New User Registered', `${name} (${email}) just joined Farvez Fashion Store.`, '/admin?tab=customers');
+
       const token = jwt.sign({ id: result.lastInsertRowid, email, role: 'user' }, JWT_SECRET);
       res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'none' });
       res.json({ user: { id: result.lastInsertRowid, name, email, role: 'user' }, token });
@@ -75,7 +101,7 @@ async function startServer() {
 
   // --- Product Routes ---
   app.get('/api/products', (req, res) => {
-    const { category, featured, trending, limit } = req.query;
+    const { category, featured, trending, limit, q, minPrice, maxPrice, color, size, sort } = req.query;
     let query = 'SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id';
     const params: any[] = [];
     const conditions: string[] = [];
@@ -84,11 +110,43 @@ async function startServer() {
       conditions.push('c.slug = ?');
       params.push(category);
     }
+    if (q) {
+      conditions.push('(p.name LIKE ? OR p.description LIKE ? OR p.sku LIKE ?)');
+      params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+    }
     if (featured === 'true') conditions.push('p.is_featured = 1');
     if (trending === 'true') conditions.push('p.is_trending = 1');
+    
+    if (minPrice) {
+      conditions.push('p.price >= ?');
+      params.push(parseFloat(minPrice as string));
+    }
+    if (maxPrice) {
+      conditions.push('p.price <= ?');
+      params.push(parseFloat(maxPrice as string));
+    }
+    if (color) {
+      conditions.push('p.variants LIKE ?');
+      params.push(`%${color}%`);
+    }
+    if (size) {
+      conditions.push('p.variants LIKE ?');
+      params.push(`%${size}%`);
+    }
 
     if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ');
-    query += ' ORDER BY p.created_at DESC';
+
+    // Sorting logic
+    if (sort === 'price_asc') {
+      query += ' ORDER BY p.price ASC';
+    } else if (sort === 'price_desc') {
+      query += ' ORDER BY p.price DESC';
+    } else if (sort === 'name_asc') {
+      query += ' ORDER BY p.name ASC';
+    } else {
+      query += ' ORDER BY p.created_at DESC';
+    }
+
     if (limit) {
       query += ' LIMIT ?';
       params.push(parseInt(limit as string));
@@ -136,8 +194,66 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // --- Wishlist Routes ---
+  app.get('/api/wishlist', authenticate, (req: any, res) => {
+    const items = db.prepare(`
+      SELECT w.id, w.product_id, p.name, p.price, p.discount_price, p.images, p.slug
+      FROM wishlist w
+      JOIN products p ON w.product_id = p.id
+      WHERE w.user_id = ?
+    `).all(req.user.id);
+    res.json(items.map((i: any) => ({ ...i, image: JSON.parse(i.images || '[]')[0] })));
+  });
+
+  app.post('/api/wishlist', authenticate, (req: any, res) => {
+    const { product_id } = req.body;
+    try {
+      db.prepare('INSERT INTO wishlist (user_id, product_id) VALUES (?, ?)').run(req.user.id, product_id);
+      res.json({ success: true });
+    } catch (err: any) {
+      if (err.message.includes('UNIQUE')) {
+        return res.json({ success: true, message: 'Already in wishlist' });
+      }
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/wishlist/:productId', authenticate, (req: any, res) => {
+    db.prepare('DELETE FROM wishlist WHERE user_id = ? AND product_id = ?').run(req.user.id, req.params.productId);
+    res.json({ success: true });
+  });
+
+  // --- Newsletter Route ---
+  app.post('/api/newsletter/subscribe', (req, res) => {
+    const { email } = req.body;
+    try {
+      db.prepare('INSERT INTO newsletter_subscribers (email) VALUES (?)').run(email);
+      res.json({ success: true, message: 'Subscribed successfully' });
+    } catch (err: any) {
+      if (err.message.includes('UNIQUE')) {
+        return res.json({ success: true, message: 'Already subscribed' });
+      }
+      res.status(400).json({ error: 'Subscription failed' });
+    }
+  });
+
+  // --- Contact Routes ---
+  app.post('/api/contact', (req, res) => {
+    const { name, email, subject, message } = req.body;
+    try {
+      db.prepare('INSERT INTO contact_messages (name, email, subject, message) VALUES (?, ?, ?, ?)').run(name, email, subject, message);
+      
+      // Notify admin about new message
+      createNotification('system', 'New Contact Message', `New inquiry from ${name} about "${subject}".`, '/admin?tab=support');
+      
+      res.json({ success: true, message: 'Message sent successfully' });
+    } catch (err: any) {
+      res.status(400).json({ error: 'Failed to send message' });
+    }
+  });
+
   // --- Order Routes ---
-  app.post('/api/orders', authenticate, (req: any, res) => {
+  app.post('/api/orders', tryAuthenticate, (req: any, res) => {
     const { customerName, customerEmail, phone, items, totalAmount, shippingAddress, paymentMethod } = req.body;
     
     try {
@@ -145,7 +261,7 @@ async function startServer() {
         const orderResult = db.prepare(`
           INSERT INTO orders (user_id, customer_name, customer_email, phone, total_amount, shipping_address, payment_method)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(req.user.id, customerName, customerEmail, phone, totalAmount, shippingAddress, paymentMethod);
+        `).run(req.user?.id || null, customerName, customerEmail, phone, totalAmount, shippingAddress, paymentMethod);
 
         const orderId = orderResult.lastInsertRowid;
 
@@ -155,13 +271,25 @@ async function startServer() {
         `);
 
         for (const item of items) {
-          insertItem.run(orderId, item.product_id, item.quantity, item.price, JSON.stringify(item.variant));
+          insertItem.run(orderId, item.product_id, item.quantity, item.price, item.variant);
           // Update stock
           db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(item.quantity, item.product_id);
+          
+          // Check for low stock
+          const product: any = db.prepare('SELECT name, stock FROM products WHERE id = ?').get(item.product_id);
+          if (product && product.stock < 5) {
+            createNotification('stock', 'Low Stock Alert', `Product "${product.name}" is running low on stock (${product.stock} left).`, '/admin?tab=products');
+          }
         }
 
-        // Clear cart
-        db.prepare('DELETE FROM cart_items WHERE user_id = ?').run(req.user.id);
+        // Clear cart if logged in
+        if (req.user?.id) {
+          db.prepare('DELETE FROM cart_items WHERE user_id = ?').run(req.user.id);
+        }
+
+        // Notify admin about new order
+        const orderType = req.user ? 'Order' : 'Guest Order';
+        createNotification('order', `New ${orderType} Received`, `${orderType} #${orderId} for $${totalAmount} has been placed by ${customerName}.`, '/admin?tab=orders');
 
         return orderId;
       });
@@ -180,12 +308,12 @@ async function startServer() {
 
   // --- Admin Routes ---
   app.post('/api/admin/products', authenticate, isAdmin, (req, res) => {
-    const { name, slug, description, price, discount_price, stock, sku, category_id, images, variants, is_featured, is_trending } = req.body;
+    const { name, slug, description, price, discount_price, stock, sku, category_id, images, variants, is_featured, is_trending, video_url } = req.body;
     try {
       db.prepare(`
-        INSERT INTO products (name, slug, description, price, discount_price, stock, sku, category_id, images, variants, is_featured, is_trending)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(name, slug, description, price, discount_price, stock, sku, category_id, JSON.stringify(images), JSON.stringify(variants), is_featured ? 1 : 0, is_trending ? 1 : 0);
+        INSERT INTO products (name, slug, description, price, discount_price, stock, sku, category_id, images, variants, is_featured, is_trending, video_url)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(name, slug, description, price, discount_price, stock, sku, category_id, JSON.stringify(images), JSON.stringify(variants), is_featured ? 1 : 0, is_trending ? 1 : 0, video_url || null);
       res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
@@ -193,7 +321,7 @@ async function startServer() {
   });
 
   app.patch('/api/admin/products/:id', authenticate, isAdmin, (req, res) => {
-    const { name, slug, description, price, discount_price, stock, sku, category_id, images, variants, is_featured, is_trending } = req.body;
+    const { name, slug, description, price, discount_price, stock, sku, category_id, images, variants, is_featured, is_trending, video_url } = req.body;
     try {
       const updates = [];
       const params = [];
@@ -210,6 +338,7 @@ async function startServer() {
       if (variants !== undefined) { updates.push('variants = ?'); params.push(JSON.stringify(variants)); }
       if (is_featured !== undefined) { updates.push('is_featured = ?'); params.push(is_featured ? 1 : 0); }
       if (is_trending !== undefined) { updates.push('is_trending = ?'); params.push(is_trending ? 1 : 0); }
+      if (video_url !== undefined) { updates.push('video_url = ?'); params.push(video_url); }
 
       if (updates.length === 0) return res.status(400).json({ error: 'No updates provided' });
 
@@ -235,7 +364,17 @@ async function startServer() {
     const totalRevenue = db.prepare("SELECT SUM(total_amount) as sum FROM orders WHERE status != 'canceled'").get() as any;
     const totalProducts = db.prepare('SELECT COUNT(*) as count FROM products').get() as any;
     const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'user'").get() as any;
+    const pendingOrdersCount = db.prepare("SELECT COUNT(*) as count FROM orders WHERE status = 'Pending'").get() as any;
     
+    // Recent orders
+    const recentOrders = db.prepare(`
+      SELECT o.*, 
+        (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count
+      FROM orders o 
+      ORDER BY created_at DESC 
+      LIMIT 5
+    `).all();
+
     // Sales analytics for last 7 days
     const salesAnalytics = db.prepare(`
       SELECT date(created_at) as date, SUM(total_amount) as revenue
@@ -245,12 +384,25 @@ async function startServer() {
       ORDER BY date ASC
     `).all();
 
+    // Top selling products
+    const topProducts = db.prepare(`
+      SELECT p.id, p.name, SUM(oi.quantity) as total_sold, p.price, p.images
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      GROUP BY p.id
+      ORDER BY total_sold DESC
+      LIMIT 5
+    `).all();
+
     res.json({
       orders: totalOrders.count,
       revenue: totalRevenue.sum || 0,
       products: totalProducts.count,
       users: totalUsers.count,
-      salesAnalytics
+      pendingOrdersCount: pendingOrdersCount.count,
+      recentOrders,
+      salesAnalytics,
+      topProducts
     });
   });
 
@@ -265,26 +417,19 @@ async function startServer() {
       `).all(order.id);
       return { 
         ...order, 
-        items: items.map((item: any) => ({ 
-          ...item, 
-          image: JSON.parse(item.images || '[]')[0] 
-        })) 
+        items: items.map((item: any) => {
+          let image = '';
+          try {
+            const imgs = JSON.parse(item.images || '[]');
+            image = Array.isArray(imgs) ? imgs[0] : '';
+          } catch (e) {
+            image = '';
+          }
+          return { ...item, image };
+        }) 
       };
     });
     res.json(ordersWithItems);
-  });
-
-  app.post('/api/orders', (req, res) => {
-    const { customer_id, customer_name, phone, address, product_name, size, color, total_amount, payment_method } = req.body;
-    try {
-      const result = db.prepare(`
-        INSERT INTO orders (user_id, customer_name, phone, address, product_name, size, color, total_amount, status, payment_method)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?)
-      `).run(customer_id || null, customer_name, phone, address, product_name, size, color, total_amount, payment_method || 'COD');
-      res.json({ success: true, order_id: result.lastInsertRowid });
-    } catch (err: any) {
-      res.status(400).json({ error: err.message });
-    }
   });
 
   app.patch('/api/admin/orders/:id/status', authenticate, isAdmin, (req, res) => {
@@ -372,6 +517,70 @@ async function startServer() {
 
   app.delete('/api/admin/addresses/:id', authenticate, isAdmin, (req: any, res) => {
     db.prepare('DELETE FROM user_addresses WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
+    res.json({ success: true });
+  });
+
+  // --- Notification Routes ---
+  app.get('/api/admin/notifications', authenticate, isAdmin, (req, res) => {
+    const notifications = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC LIMIT 50').all();
+    res.json(notifications);
+  });
+
+  app.patch('/api/admin/notifications/:id/read', authenticate, isAdmin, (req, res) => {
+    db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.patch('/api/admin/notifications/read-all', authenticate, isAdmin, (req, res) => {
+    db.prepare('UPDATE notifications SET is_read = 1').run();
+    res.json({ success: true });
+  });
+
+  app.delete('/api/admin/notifications/:id', authenticate, isAdmin, (req, res) => {
+    db.prepare('DELETE FROM notifications WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.delete('/api/admin/notifications', authenticate, isAdmin, (req, res) => {
+    db.prepare('DELETE FROM notifications').run();
+    res.json({ success: true });
+  });
+
+  app.get('/api/admin/users', authenticate, isAdmin, (req, res) => {
+    const users = db.prepare(`
+      SELECT u.id, u.name, u.email, u.role, u.phone, u.address, u.profile_photo, u.created_at,
+        (SELECT COUNT(*) FROM orders WHERE user_id = u.id) as total_orders,
+        (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE user_id = u.id AND status != 'canceled') as total_spent,
+        (SELECT MAX(created_at) FROM orders WHERE user_id = u.id) as last_order_at
+      FROM users u 
+      WHERE u.role = 'user' 
+      ORDER BY u.created_at DESC
+    `).all();
+    res.json(users);
+  });
+
+  app.get('/api/admin/newsletter', authenticate, isAdmin, (req, res) => {
+    const subscribers = db.prepare('SELECT * FROM newsletter_subscribers ORDER BY subscribed_at DESC').all();
+    res.json(subscribers);
+  });
+
+  app.delete('/api/admin/newsletter/:id', authenticate, isAdmin, (req, res) => {
+    db.prepare('DELETE FROM newsletter_subscribers WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get('/api/admin/messages', authenticate, isAdmin, (req, res) => {
+    const messages = db.prepare('SELECT * FROM contact_messages ORDER BY created_at DESC').all();
+    res.json(messages);
+  });
+
+  app.patch('/api/admin/messages/:id/read', authenticate, isAdmin, (req, res) => {
+    db.prepare('UPDATE contact_messages SET is_read = 1 WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.delete('/api/admin/messages/:id', authenticate, isAdmin, (req, res) => {
+    db.prepare('DELETE FROM contact_messages WHERE id = ?').run(req.params.id);
     res.json({ success: true });
   });
 

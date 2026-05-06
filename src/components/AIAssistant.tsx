@@ -42,10 +42,10 @@ export function AIAssistant() {
 
 Owner & Founder Information:
 - Owner Name: Farvez Ahmed (ফারভেজ আহমেদ)
-- Phone: +880 193996944
+- Phone: +880 1934996944
 - Email: parvezahmed53190@gmail.com
 - Facebook: https://www.facebook.com/share/1MuvYSfBrP/
-- Address: Humaun Rashid cattar, Dakshin surma, Sylhet, 3100
+- Address: Mominkhola, Sylhet 3100, dakshin surma, sylhet.
 
 Store Philosophy:
 Farvez Fashion Store focuses on quality, affordability, and customer satisfaction. We curate a lifestyle of elegance and timeless style.
