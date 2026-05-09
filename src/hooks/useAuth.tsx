@@ -15,24 +15,39 @@ interface AuthContextType {
   loading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (userData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('user_info');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      const savedUser = localStorage.getItem('user_info');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      console.error('Failed to parse user_info from localStorage', e);
+      return null;
+    }
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AuthProvider: Starting checkAuth');
+    
+    // Safety timeout: If auth check takes more than 10 seconds, force loading to false
+    const safetyTimeout = setTimeout(() => {
+      console.warn('AuthProvider: checkAuth timed out. Forcing loading to false.');
+      setLoading(false);
+    }, 10000);
+
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
         setLoading(false);
         setUser(null);
         localStorage.removeItem('user_info');
+        clearTimeout(safetyTimeout);
         return;
       }
       try {
@@ -56,8 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (err) {
         console.error('Auth check failed', err);
+        setUser(null);
       } finally {
         setLoading(false);
+        clearTimeout(safetyTimeout);
       }
     };
     checkAuth();
@@ -90,8 +107,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user_info');
   };
 
+  const updateUser = (userData: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, ...userData };
+      localStorage.setItem('user_info', JSON.stringify({
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        role: updated.role,
+        profile_photo: updated.profile_photo
+      }));
+      return updated;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

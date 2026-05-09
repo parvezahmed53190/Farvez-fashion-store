@@ -43,7 +43,9 @@ export function Home() {
         body: JSON.stringify({ email: newsletterEmail }),
       });
       if (res.ok) {
-        alert('Thank you for subscribing!');
+        window.dispatchEvent(new CustomEvent('app-notification', { 
+          detail: { message: 'Thank you for subscribing to our newsletter!' } 
+        }));
         setNewsletterEmail('');
       }
     } finally {

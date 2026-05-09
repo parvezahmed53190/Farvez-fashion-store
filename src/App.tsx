@@ -64,7 +64,7 @@ function AppContent() {
           {/* Admin Routes */}
           <Route 
             path="/admin/*" 
-            element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} 
+            element={user?.role === 'admin' || user?.role === 'employee' ? <AdminDashboard /> : <Navigate to="/login" />} 
           />
         </Routes>
       </main>

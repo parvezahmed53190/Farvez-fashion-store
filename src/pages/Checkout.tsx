@@ -20,7 +20,8 @@ export function Checkout() {
     city: '',
     zip: '',
     phone: '',
-    paymentMethod: 'cod'
+    paymentMethod: 'cod',
+    transactionId: ''
   });
 
   const handlePlaceOrder = async () => {
@@ -29,13 +30,21 @@ export function Checkout() {
       return;
     }
 
+    if (formData.paymentMethod === 'bkash' || formData.paymentMethod === 'nagad') {
+      const txId = formData.transactionId;
+      if (!txId || txId.length < 8 || txId.length > 12 || /[^a-zA-Z0-9]/.test(txId)) {
+        alert('Invalid Transaction ID. Please check your SMS and enter the correct ID.');
+        return;
+      }
+    }
+
     const token = localStorage.getItem('token');
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           customerName: `${formData.firstName} ${formData.lastName}`,
@@ -49,7 +58,8 @@ export function Checkout() {
           })),
           totalAmount: total,
           shippingAddress: `${formData.address}, ${formData.city}, ${formData.zip}`,
-          paymentMethod: formData.paymentMethod
+          paymentMethod: formData.paymentMethod,
+          transactionId: formData.transactionId
         })
       });
 
@@ -161,20 +171,62 @@ export function Checkout() {
                 </div>
                 <div className={`w-4 h-4 rounded-full border-2 ${formData.paymentMethod === 'cod' ? 'border-gold bg-gold' : 'border-gray-600'}`}></div>
               </button>
+              
               <button 
-                onClick={() => setFormData({...formData, paymentMethod: 'card'})}
-                className={`p-6 border flex items-center justify-between transition-all ${formData.paymentMethod === 'card' ? 'border-gold bg-gold/5' : 'border-white/10 hover:border-gold/50'}`}
+                onClick={() => setFormData({...formData, paymentMethod: 'bkash'})}
+                className={`p-6 border flex items-center justify-between transition-all ${formData.paymentMethod === 'bkash' ? 'border-[#e2136e] bg-[#e2136e]/5' : 'border-white/10 hover:border-[#e2136e]/50'}`}
               >
                 <div className="flex items-center">
-                  <CreditCard className="mr-4 text-gold" />
+                  <div className="w-8 h-8 mr-4 rounded-full bg-[#e2136e] flex justify-center items-center font-bold text-white text-xs">
+                    bKash
+                  </div>
                   <div className="text-left">
-                    <div className="font-bold">Card Payment</div>
-                    <div className="text-xs text-gray-500">Secure online payment</div>
+                    <div className="font-bold">bKash (Manual)</div>
+                    <div className="text-xs text-gray-500">Send money manually</div>
                   </div>
                 </div>
-                <div className={`w-4 h-4 rounded-full border-2 ${formData.paymentMethod === 'card' ? 'border-gold bg-gold' : 'border-gray-600'}`}></div>
+                <div className={`w-4 h-4 rounded-full border-2 ${formData.paymentMethod === 'bkash' ? 'border-[#e2136e] bg-[#e2136e]' : 'border-gray-600'}`}></div>
+              </button>
+
+              <button 
+                onClick={() => setFormData({...formData, paymentMethod: 'nagad'})}
+                className={`p-6 border flex items-center justify-between transition-all ${formData.paymentMethod === 'nagad' ? 'border-[#ed1c24] bg-[#ed1c24]/5' : 'border-white/10 hover:border-[#ed1c24]/50'}`}
+              >
+                <div className="flex items-center">
+                  <div className="w-8 h-8 mr-4 rounded-full bg-[#ed1c24] flex justify-center items-center font-bold text-white text-xs">
+                    Nagad
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold">Nagad (Manual)</div>
+                    <div className="text-xs text-gray-500">Send money manually</div>
+                  </div>
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 ${formData.paymentMethod === 'nagad' ? 'border-[#ed1c24] bg-[#ed1c24]' : 'border-gray-600'}`}></div>
               </button>
             </div>
+
+            {(formData.paymentMethod === 'bkash' || formData.paymentMethod === 'nagad') && (
+              <div className="bg-white/5 border border-white/10 p-6 space-y-4">
+                <div className="font-bold text-lg text-gold">Manual Payment Instructions</div>
+                <p className="text-sm text-gray-400">
+                  Send Money to <span className="font-bold text-white">01893071634 (Personal)</span> using your selected payment method.
+                </p>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gold uppercase tracking-widest">Transaction ID <span className="text-red-500">*</span></label>
+                  <input 
+                    type="text" 
+                    className="w-full bg-luxury-black border border-white/10 px-4 py-3 focus:outline-none focus:border-gold"
+                    value={formData.transactionId}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+                      setFormData({...formData, transactionId: val});
+                    }}
+                    placeholder="Enter Transaction ID"
+                    required
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -33,6 +33,11 @@ async function startServer() {
     }
   };
 
+  const isStaff = (req: any, res: any, next: any) => {
+    if (req.user?.role !== 'admin' && req.user?.role !== 'employee') return res.status(403).json({ error: 'Forbidden' });
+    next();
+  };
+
   const isAdmin = (req: any, res: any, next: any) => {
     if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
     next();
@@ -92,6 +97,16 @@ async function startServer() {
   app.get('/api/auth/me', authenticate, (req: any, res) => {
     const user: any = db.prepare('SELECT id, name, email, role, profile_photo, phone, address FROM users WHERE id = ?').get(req.user.id);
     res.json(user);
+  });
+
+  app.patch('/api/users/me/photo', authenticate, (req: any, res) => {
+    const { photo } = req.body;
+    try {
+      db.prepare('UPDATE users SET profile_photo = ? WHERE id = ?').run(photo, req.user.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: 'Failed to update profile photo' });
+    }
   });
 
   app.post('/api/auth/logout', (req, res) => {
@@ -254,14 +269,14 @@ async function startServer() {
 
   // --- Order Routes ---
   app.post('/api/orders', tryAuthenticate, (req: any, res) => {
-    const { customerName, customerEmail, phone, items, totalAmount, shippingAddress, paymentMethod } = req.body;
+    const { customerName, customerEmail, phone, items, totalAmount, shippingAddress, paymentMethod, transactionId } = req.body;
     
     try {
       const transaction = db.transaction(() => {
         const orderResult = db.prepare(`
-          INSERT INTO orders (user_id, customer_name, customer_email, phone, total_amount, shipping_address, payment_method)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(req.user?.id || null, customerName, customerEmail, phone, totalAmount, shippingAddress, paymentMethod);
+          INSERT INTO orders (user_id, customer_name, customer_email, phone, total_amount, shipping_address, payment_method, transaction_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(req.user?.id || null, customerName, customerEmail, phone, totalAmount, shippingAddress, paymentMethod, transactionId || null);
 
         const orderId = orderResult.lastInsertRowid;
 
@@ -307,7 +322,7 @@ async function startServer() {
   });
 
   // --- Admin Routes ---
-  app.post('/api/admin/products', authenticate, isAdmin, (req, res) => {
+  app.post('/api/admin/products', authenticate, isStaff, (req, res) => {
     const { name, slug, description, price, discount_price, stock, sku, category_id, images, variants, is_featured, is_trending, video_url } = req.body;
     try {
       db.prepare(`
@@ -320,7 +335,7 @@ async function startServer() {
     }
   });
 
-  app.patch('/api/admin/products/:id', authenticate, isAdmin, (req, res) => {
+  app.patch('/api/admin/products/:id', authenticate, isStaff, (req, res) => {
     const { name, slug, description, price, discount_price, stock, sku, category_id, images, variants, is_featured, is_trending, video_url } = req.body;
     try {
       const updates = [];
@@ -350,7 +365,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/products/:id', authenticate, isAdmin, (req, res) => {
+  app.delete('/api/products/:id', authenticate, isStaff, (req, res) => {
     try {
       db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
       res.json({ success: true });
@@ -406,7 +421,7 @@ async function startServer() {
     });
   });
 
-  app.get('/api/admin/orders', authenticate, isAdmin, (req, res) => {
+  app.get('/api/admin/orders', authenticate, isStaff, (req, res) => {
     const orders = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all() as any[];
     const ordersWithItems = orders.map(order => {
       const items = db.prepare(`
@@ -432,7 +447,7 @@ async function startServer() {
     res.json(ordersWithItems);
   });
 
-  app.patch('/api/admin/orders/:id/status', authenticate, isAdmin, (req, res) => {
+  app.patch('/api/admin/orders/:id/status', authenticate, isStaff, (req, res) => {
     const { status, payment_status } = req.body;
     const updates = [];
     const params = [];
@@ -553,10 +568,18 @@ async function startServer() {
         (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE user_id = u.id AND status != 'canceled') as total_spent,
         (SELECT MAX(created_at) FROM orders WHERE user_id = u.id) as last_order_at
       FROM users u 
-      WHERE u.role = 'user' 
       ORDER BY u.created_at DESC
     `).all();
     res.json(users);
+  });
+
+  app.patch('/api/admin/users/:id/role', authenticate, isAdmin, (req, res) => {
+    const { role } = req.body;
+    if (!['user', 'admin', 'employee'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+    db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.params.id);
+    res.json({ success: true });
   });
 
   app.get('/api/admin/newsletter', authenticate, isAdmin, (req, res) => {

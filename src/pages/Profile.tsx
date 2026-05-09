@@ -59,7 +59,7 @@ interface Notification {
 }
 
 export function Profile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -294,9 +294,35 @@ export function Profile() {
                       user.name.charAt(0)
                     )}
                   </div>
-                  <button className="absolute bottom-0 right-0 p-2 bg-gold text-luxury-black rounded-full shadow-lg hover:scale-110 transition-transform">
+                  <label className="absolute bottom-0 right-0 p-2 bg-gold text-luxury-black rounded-full shadow-lg hover:scale-110 transition-transform cursor-pointer">
                     <Edit2 size={14} />
-                  </button>
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onloadend = async () => {
+                        const token = localStorage.getItem('token');
+                        const base64 = reader.result as string;
+                        try {
+                          const res = await fetch('/api/users/me/photo', {
+                            method: 'PATCH',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                            },
+                            body: JSON.stringify({ photo: base64 })
+                          });
+                          if(res.ok) {
+                            updateUser({ profile_photo: base64 });
+                            addToast('Profile photo updated successfully');
+                          }
+                        } catch(err) {
+                          console.error(err);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }} />
+                  </label>
                 </div>
                 <h3 className="font-serif font-bold text-lg">{user.name}</h3>
                 <p className="text-xs text-gray-500 uppercase tracking-widest mt-1">{user.role}</p>

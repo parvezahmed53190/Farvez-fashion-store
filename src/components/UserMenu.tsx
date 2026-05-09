@@ -18,10 +18,11 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ onLogout }: UserMenuProps) {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -32,6 +33,45 @@ export function UserMenu({ onLogout }: UserMenuProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        
+        // Optimistic update
+        updateUser({ profile_photo: base64String });
+
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/users/me/photo', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ photo: base64String })
+        });
+
+        if (!res.ok) {
+          throw new Error('Upload failed');
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Failed to upload photo:', err);
+      // If error toast needed, dispatch it here
+      window.dispatchEvent(new CustomEvent('app-notification', { 
+        detail: { message: 'Failed to update profile photo' } 
+      }));
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (!user) return null;
 
@@ -86,7 +126,11 @@ export function UserMenu({ onLogout }: UserMenuProps) {
           >
             <div className="p-4 border-b border-white/5 bg-white/[0.02]">
               <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Signed in as</p>
-              <p className="text-sm font-bold text-white truncate">{user.email}</p>
+              <p className="text-sm font-bold text-white truncate mb-3">{user.email}</p>
+              <label className="cursor-pointer flex items-center justify-center space-x-2 w-full px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors text-xs font-bold text-white uppercase tracking-widest">
+                <span>{isUploading ? 'Uploading...' : 'Upload Photo'}</span>
+                <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isUploading} />
+              </label>
             </div>
 
             <div className="p-2">

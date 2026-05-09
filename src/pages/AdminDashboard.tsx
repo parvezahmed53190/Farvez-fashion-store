@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, ShoppingBag, Users, Settings, Plus, DollarSign, Package, TrendingUp, LogOut, Trash2, Edit, CheckCircle, Clock, Truck, XCircle, Search, MapPin, User, Mail, Phone, Save, ArrowLeft, Upload, HelpCircle, MessageSquare, ChevronUp, ChevronDown, FileText, Download, Loader2, Bell, AlertCircle, Shield, Activity, Globe } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Users, Settings, Plus, DollarSign, Package, TrendingUp, LogOut, Trash2, Edit, CheckCircle, Clock, Truck, XCircle, Search, MapPin, User, Mail, Phone, Save, ArrowLeft, Upload, HelpCircle, MessageSquare, ChevronUp, ChevronDown, FileText, Download, Loader2, Bell, AlertCircle, Shield, Activity, Globe, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { ProductForm } from '../components/ProductForm';
@@ -32,6 +32,28 @@ export function AdminDashboard() {
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [productToDelete, setProductToDelete] = useState<any>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const isEmployee = user?.role === 'employee';
+
+  useEffect(() => {
+    if (user?.role === 'employee' && activeTab === 'overview') {
+      setActiveTab('orders');
+    }
+  }, [user]);
+
+  const managementTabs = [
+    { id: 'newsletter', icon: <Mail size={18} />, label: 'Newsletter', adminOnly: true },
+    { id: 'addresses', icon: <MapPin size={18} />, label: 'Addresses', adminOnly: false },
+    { id: 'profile', icon: <User size={18} />, label: 'Profile', adminOnly: false },
+    { id: 'support', icon: <HelpCircle size={18} />, label: 'Support', adminOnly: true },
+    { id: 'employees', icon: <Users size={18} />, label: 'Employees', adminOnly: true },
+  ];
+
+  const sanctuaryTabs = [
+    { id: 'overview', icon: <LayoutDashboard size={18} />, label: 'Analytics Overview', adminOnly: true },
+    { id: 'products', icon: <Package size={18} />, label: 'Products', adminOnly: false },
+    { id: 'orders', icon: <ShoppingBag size={18} />, label: 'Orders', adminOnly: false },
+    { id: 'customers', icon: <Users size={18} />, label: 'Customers', adminOnly: true },
+  ];
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [newAddress, setNewAddress] = useState({
@@ -632,6 +654,98 @@ export function AdminDashboard() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-luxury-black flex">
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/80 z-40 lg:hidden"
+            />
+            <motion.aside 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+              className="fixed inset-y-0 left-0 w-64 border-r border-white/5 bg-luxury-gray z-50 lg:hidden overflow-y-auto"
+            >
+              <div className="p-8 border-b border-white/5 flex justify-between items-center">
+                <Link to="/" className="flex items-center text-gray-400 hover:text-gold transition-colors text-xs font-bold uppercase tracking-widest group">
+                  <ArrowLeft size={14} className="mr-2 group-hover:-translate-x-1 transition-transform" />
+                  Back
+                </Link>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-400 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <h2 className="px-8 mt-6 text-xl font-serif font-bold gold-text-gradient tracking-widest">ADMIN P.</h2>
+              <nav className="p-4 space-y-6 mt-2">
+                <div>
+                  <div className="px-4 mb-3">
+                    <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] flex items-center">
+                      <span className="w-4 h-[1px] bg-gold/30 mr-2"></span>
+                      My Sanctuary
+                    </h3>
+                  </div>
+                  <div className="space-y-1">
+                    {sanctuaryTabs.filter(tab => !isEmployee || !tab.adminOnly).map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full flex items-center px-4 py-3 text-sm font-medium transition-all duration-300 rounded-sm border-l-2 ${
+                          activeTab === item.id 
+                            ? 'bg-gold/10 text-gold border-gold' 
+                            : 'text-gray-400 border-transparent hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <span className={`${activeTab === item.id ? 'scale-110 mr-3' : 'mr-3'} transition-transform duration-300`}>
+                          {item.icon}
+                        </span>
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="px-4 mb-3">
+                    <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] flex items-center">
+                      <span className="w-4 h-[1px] bg-gold/30 mr-2"></span>
+                      Management
+                    </h3>
+                  </div>
+                  <div className="space-y-1">
+                    {managementTabs.filter(tab => !isEmployee || !tab.adminOnly).map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full flex items-center px-4 py-3 text-sm font-medium transition-all duration-300 rounded-sm border-l-2 ${
+                          activeTab === item.id 
+                            ? 'bg-gold/10 text-gold border-gold' 
+                            : 'text-gray-400 border-transparent hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <span className={`${activeTab === item.id ? 'scale-110 mr-3' : 'mr-3'} transition-transform duration-300`}>
+                          {item.icon}
+                        </span>
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button onClick={logout} className="w-full flex items-center space-x-3 px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-sm transition-all duration-300 mt-10 group">
+                  <LogOut size={18} className="group-hover:translate-x-1 transition-transform" />
+                  <span className="text-sm font-medium">Logout System</span>
+                </button>
+              </nav>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
       {/* Sidebar */}
       <aside className="w-64 border-r border-white/5 bg-luxury-gray hidden lg:block">
         <div className="p-8 border-b border-white/5">
@@ -650,12 +764,7 @@ export function AdminDashboard() {
               </h3>
             </div>
             <div className="space-y-1">
-              {[
-                { id: 'overview', icon: <LayoutDashboard size={18} />, label: 'Analytics Overview' },
-                { id: 'products', icon: <Package size={18} />, label: 'Products' },
-                { id: 'orders', icon: <ShoppingBag size={18} />, label: 'Orders' },
-                { id: 'customers', icon: <Users size={18} />, label: 'Customers' },
-              ].map((item) => (
+              {sanctuaryTabs.filter(tab => !isEmployee || !tab.adminOnly).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
@@ -682,12 +791,7 @@ export function AdminDashboard() {
               </h3>
             </div>
             <div className="space-y-1">
-              {[
-                { id: 'newsletter', icon: <Mail size={18} />, label: 'Newsletter' },
-                { id: 'addresses', icon: <MapPin size={18} />, label: 'Addresses' },
-                { id: 'profile', icon: <User size={18} />, label: 'Profile' },
-                { id: 'support', icon: <HelpCircle size={18} />, label: 'Support' },
-              ].map((item) => (
+              {managementTabs.filter(tab => !isEmployee || !tab.adminOnly).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
@@ -720,7 +824,10 @@ export function AdminDashboard() {
             <Link to="/" className="lg:hidden p-2 bg-white/5 text-gold rounded-sm hover:bg-white/10 transition-colors">
               <ArrowLeft size={20} />
             </Link>
-            <h1 className="text-3xl font-serif font-bold capitalize">{activeTab}</h1>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 bg-white/5 text-gold rounded-sm hover:bg-white/10 transition-colors">
+              <Menu size={20} />
+            </button>
+            <h1 className="text-3xl font-serif font-bold capitalize hidden sm:block">{activeTab}</h1>
           </div>
           <div className="flex items-center space-x-4">
             <div className="relative">
@@ -1125,7 +1232,7 @@ export function AdminDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               <div className="lg:col-span-3 space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <h2 className="text-xl font-serif font-bold">Order Management</h2>
+                  <h2 className="text-xl font-serif font-bold">{isEmployee ? 'Order Processing' : 'Order Management'}</h2>
                   <div className="flex flex-col md:flex-row items-end md:items-center gap-4 w-full md:w-auto">
                     <div className="relative w-full md:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
@@ -1160,6 +1267,7 @@ export function AdminDashboard() {
                       <tr>
                         <th className="px-6 py-4">Order Info</th>
                         <th className="px-6 py-4">Customer</th>
+                        <th className="px-6 py-4">Payment</th>
                         <th className="px-6 py-4">Total</th>
                         <th className="px-6 py-4">Status</th>
                         <th className="px-6 py-4 text-right">Actions</th>
@@ -1208,6 +1316,14 @@ export function AdminDashboard() {
                                 <div className="text-sm font-bold group-hover/name:text-gold transition-colors">{order.customer_name}</div>
                                 <div className="text-xs text-gray-500 group-hover/name:text-gold/60 transition-colors uppercase tracking-widest text-[10px]">{order.customer_email}</div>
                               </button>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-xs font-bold uppercase">{order.payment_method || 'COD'}</div>
+                              {order.transaction_id && (
+                                <div className="text-[10px] text-gray-500 mt-0.5" title={order.transaction_id}>
+                                  TXN: {order.transaction_id.substring(0, 8)}...
+                                </div>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-sm font-bold text-gold">${order.total_amount}</td>
                             <td className="px-6 py-4">
@@ -1289,7 +1405,7 @@ export function AdminDashboard() {
                                 exit={{ opacity: 0, height: 0 }}
                                 className="bg-white/[0.02]"
                               >
-                                <td colSpan={5} className="px-6 py-8">
+                                <td colSpan={6} className="px-6 py-8">
                                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                     <div className="md:col-span-2 space-y-6">
                                       <div>
@@ -1403,6 +1519,12 @@ export function AdminDashboard() {
                                             <span className="text-[10px] text-gray-500 uppercase">Method</span>
                                             <span className="text-xs font-bold uppercase">{order.payment_method || 'COD'}</span>
                                           </div>
+                                          {order.transaction_id && (
+                                            <div className="flex justify-between items-center text-[10px]">
+                                              <span className="text-gray-500 uppercase">Transaction ID</span>
+                                              <span className="font-mono text-gold">{order.transaction_id}</span>
+                                            </div>
+                                          )}
                                           <div className="flex justify-between items-center">
                                             <span className="text-[10px] text-gray-500 uppercase">Status</span>
                                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${order.payment_status === 'paid' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}`}>
@@ -1610,6 +1732,91 @@ export function AdminDashboard() {
               {customers.length === 0 && (
                 <div className="p-12 text-center text-gray-500">No customers registered yet.</div>
               )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'employees' && !isEmployee && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-serif font-bold">Employee Management</h2>
+              <div className="text-xs text-gray-500 font-bold uppercase tracking-widest">{customers.filter(c => c.role === 'employee').length} Employees</div>
+            </div>
+            <div className="luxury-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/5 bg-white/[0.02]">
+                      <th className="px-6 py-4">Employee</th>
+                      <th className="px-6 py-4">Contact</th>
+                      <th className="px-6 py-4">Role</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.length > 0 ? customers.map(customer => (
+                      <tr key={customer.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center text-gold font-bold text-xs">
+                              {customer.name?.charAt(0) || '#'}
+                            </div>
+                            <div className="font-bold text-sm">{customer.name}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-bold">{customer.email}</div>
+                          <div className="text-xs text-gray-500">{customer.phone || 'No phone'}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <select 
+                            className="bg-luxury-black border border-white/10 px-3 py-1 rounded text-xs focus:outline-none focus:border-gold disabled:opacity-50"
+                            value={customer.role || 'user'}
+                            disabled={customer.email === user?.email}
+                            onChange={async (e) => {
+                              const newRole = e.target.value;
+                              const token = localStorage.getItem('token');
+                              try {
+                                const res = await fetch(`/api/admin/users/${customer.id}/role`, {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                  },
+                                  body: JSON.stringify({ role: newRole })
+                                });
+                                if (res.ok) {
+                                  setCustomers(customers.map(c => c.id === customer.id ? { ...c, role: newRole } : c));
+                                } else {
+                                  alert('Failed to update role');
+                                }
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}
+                          >
+                            <option value="user">User</option>
+                            <option value="employee">Employee</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button 
+                            onClick={() => openCustomerProfile(customer)}
+                            className="px-4 py-2 border border-white/10 text-xs font-bold uppercase tracking-widest text-gold hover:bg-gold hover:text-luxury-black transition-all"
+                          >
+                            View Stats
+                          </button>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No users found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -2264,8 +2471,8 @@ export function AdminDashboard() {
         }}
       />
       {/* Hidden Invoice Container for Generation */}
-      <div className="fixed left-[-9999px] top-[-9999px]">
-        {orders.map(order => (
+      <div className="fixed left-[-9999px] top-[-9999px]" aria-hidden="true">
+        {orders.filter(o => isGeneratingInvoice === o.id).map(order => (
           <Invoice key={order.id} order={order} />
         ))}
       </div>

@@ -26,8 +26,13 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
-    const savedCart = localStorage.getItem('farvez_cart');
-    return savedCart ? JSON.parse(savedCart) : [];
+    try {
+      const savedCart = localStorage.getItem('farvez_cart');
+      return savedCart ? JSON.parse(savedCart) : [];
+    } catch (e) {
+      console.error('Failed to parse cart from localStorage', e);
+      return [];
+    }
   });
 
   useEffect(() => {
@@ -52,12 +57,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       
       return [...prevItems, {
         id: product.id,
-        name: product.name,
-        price: product.price,
-        discount_price: product.discount_price,
-        quantity: quantity,
-        image: product.image || (product.images && product.images[0]),
-        slug: product.slug,
+        name: product.name || 'Unknown Product',
+        price: Number(product.price) || 0,
+        discount_price: product.discount_price ? Number(product.discount_price) : undefined,
+        quantity: Number(quantity) || 1,
+        image: product.image || (product.images && Array.isArray(product.images) ? product.images[0] : (typeof product.images === 'string' ? product.images : '')),
+        slug: product.slug || '',
         variant: variantStr
       }];
     });
@@ -86,8 +91,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => setItems([]);
 
-  const total = items.reduce((acc, item) => acc + (item.discount_price || item.price) * item.quantity, 0);
-  const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
+  const total = items.reduce((acc, item) => acc + (Number(item.discount_price) || Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+  const itemCount = items.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0);
 
   return (
     <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQuantity, clearCart, total, itemCount }}>

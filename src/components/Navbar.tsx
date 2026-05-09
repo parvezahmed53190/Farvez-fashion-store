@@ -75,7 +75,7 @@ export function Navbar() {
               { name: 'Shop', path: '/shop' },
               { name: 'Men', path: '/shop?category=mens-collection' },
               { name: 'Women', path: '/shop?category=womens-collection' },
-              ...(user?.role === 'admin' ? [{ name: 'Admin', path: '/admin' }] : []),
+              ...(user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'employee' ? [{ name: 'Dashboard', path: '/admin' }] : []),
               { name: 'About', path: '/about' },
               { name: 'Contact', path: '/contact' },
             ].map((item) => (
@@ -152,23 +152,23 @@ export function Navbar() {
                 />
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
               </form>
-              <Link to="/" className="block text-lg hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Home</Link>
-              <Link to="/shop" className="block text-lg hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Shop</Link>
-              <Link to="/shop?category=mens-collection" className="block text-lg hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Men</Link>
-              <Link to="/shop?category=womens-collection" className="block text-lg hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Women</Link>
-              {user?.role === 'admin' && (
-                <Link to="/admin" className="block text-lg text-gold font-bold transition-colors" onClick={() => setIsOpen(false)}>Admin Overview</Link>
+              <Link to="/" className="block text-lg py-3 hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Home</Link>
+              <Link to="/shop" className="block text-lg py-3 hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Shop</Link>
+              <Link to="/shop?category=mens-collection" className="block text-lg py-3 hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Men</Link>
+              <Link to="/shop?category=womens-collection" className="block text-lg py-3 hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Women</Link>
+              {(user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'employee') && (
+                <Link to="/admin" className="block text-lg py-3 text-gold font-bold transition-colors" onClick={() => setIsOpen(false)}>Dashboard</Link>
               )}
-              <Link to="/about" className="block text-lg hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>About</Link>
-              <Link to="/contact" className="block text-lg hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Contact</Link>
-              <Link to="/cart" className="block text-lg hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Cart ({items.length})</Link>
+              <Link to="/about" className="block text-lg py-3 hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>About</Link>
+              <Link to="/contact" className="block text-lg py-3 hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Contact</Link>
+              <Link to="/cart" className="block text-lg py-3 hover:text-gold transition-colors" onClick={() => setIsOpen(false)}>Cart ({items.length})</Link>
               {user ? (
                 <>
-                  <Link to="/profile" className="block text-lg" onClick={() => setIsOpen(false)}>Profile</Link>
-                  <button onClick={() => { handleLogout(); setIsOpen(false); }} className="block text-lg text-red-500">Logout</button>
+                  <Link to="/profile" className="block text-lg py-3" onClick={() => setIsOpen(false)}>Profile</Link>
+                  <button onClick={() => { handleLogout(); setIsOpen(false); }} className="block text-lg py-3 text-red-500 w-full text-left">Logout</button>
                 </>
               ) : (
-                <Link to="/login" className="block text-lg" onClick={() => setIsOpen(false)}>Login</Link>
+                <Link to="/login" className="block text-lg py-3" onClick={() => setIsOpen(false)}>Login</Link>
               )}
             </div>
           </motion.div>

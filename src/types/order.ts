@@ -33,4 +33,5 @@ export interface Order {
   phone: string;
   payment_method?: string;
   payment_status?: string;
+  transaction_id?: string;
 }

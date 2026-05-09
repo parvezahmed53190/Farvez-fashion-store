@@ -38,19 +38,6 @@ if (!columns.includes('address')) {
   db.exec("ALTER TABLE users ADD COLUMN address TEXT");
 }
 
-const productTableInfo = db.prepare("PRAGMA table_info(products)").all() as any[];
-const productColumns = productTableInfo.map(c => c.name);
-if (!productColumns.includes('video_url')) {
-  db.exec("ALTER TABLE products ADD COLUMN video_url TEXT");
-}
-
-// Newsletter subscribers migration
-const newsletterTableInfo = db.prepare("PRAGMA table_info(newsletter_subscribers)").all() as any[];
-const newsletterColumns = newsletterTableInfo.map(c => c.name);
-if (!newsletterColumns.includes('subscribed_at')) {
-  db.exec("ALTER TABLE newsletter_subscribers ADD COLUMN subscribed_at DATETIME DEFAULT CURRENT_TIMESTAMP");
-}
-
 db.exec(`
   CREATE TABLE IF NOT EXISTS user_addresses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,6 +91,7 @@ db.exec(`
     total_amount REAL NOT NULL,
     status TEXT DEFAULT 'Pending',
     payment_method TEXT,
+    transaction_id TEXT,
     payment_status TEXT DEFAULT 'unpaid',
     shipping_address TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -186,6 +174,25 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
+
+// Table Migrations
+const productTableInfo = db.prepare("PRAGMA table_info(products)").all() as any[];
+const productColumns = productTableInfo.map(c => c.name);
+if (!productColumns.includes('video_url')) {
+  db.exec("ALTER TABLE products ADD COLUMN video_url TEXT");
+}
+
+const newsletterTableInfo = db.prepare("PRAGMA table_info(newsletter_subscribers)").all() as any[];
+const newsletterColumns = newsletterTableInfo.map(c => c.name);
+if (!newsletterColumns.includes('subscribed_at')) {
+  db.exec("ALTER TABLE newsletter_subscribers ADD COLUMN subscribed_at DATETIME DEFAULT CURRENT_TIMESTAMP");
+}
+
+const ordersTableInfo = db.prepare("PRAGMA table_info(orders)").all() as any[];
+const ordersColumns = ordersTableInfo.map(c => c.name);
+if (!ordersColumns.includes('transaction_id')) {
+  db.exec("ALTER TABLE orders ADD COLUMN transaction_id TEXT");
+}
 
 // Seed Categories
 const newCategories = [
